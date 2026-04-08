@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    environment:
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY}
+      OLLAMA_HOST: ${OLLAMA_HOST:-https://ollama.com}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-glm-5.1}
+    ports:
+      - "3000:3000"
+      - "8000:8000"

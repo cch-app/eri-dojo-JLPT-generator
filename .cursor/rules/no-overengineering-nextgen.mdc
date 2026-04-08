@@ -1,0 +1,16 @@
+---
+description: Avoid overengineering while still following project rules for next-gen quality
+alwaysApply: true
+---
+
+# Avoid overthinking/overdesign (while staying “next‑gen”)
+
+Do not overthink or overdesign. Prefer the **simplest solution that satisfies requirements** while complying with this project’s other rules (Clean Architecture/SOLID, security, tests, Vercel readiness, containerization, formatting, etc.).
+
+## Default approach
+
+- Start minimal and iterate; avoid speculative abstractions.
+- Add patterns (interfaces/layers/config) only when there is a clear, present need.
+- Keep changes small, reviewable, and consistent with existing conventions.
+- Optimize for readability and maintainability over cleverness.
+

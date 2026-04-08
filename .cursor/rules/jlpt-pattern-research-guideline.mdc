@@ -1,0 +1,24 @@
+---
+description: Research publicly available JLPT patterns to improve generated questions (without copying)
+alwaysApply: true
+---
+
+# JLPT pattern research (public sources, no copying)
+
+When generating JLPT-style questions, improve realism by researching **publicly available** information about JLPT structure and common patterns (by level N5–N1), then synthesize those patterns into **original** questions.
+
+## Required behavior
+
+- Prefer official or reputable public sources (JLPT format guides, skill breakdowns, published sample items, reputable prep publishers/blog analyses).
+- Use research to extract **high-level patterns**, such as:
+  - question types, section structure, timing/length expectations
+  - grammar/vocabulary/kanji coverage tendencies by level
+  - common distractor styles and difficulty ramps
+- Produce **new, original** items that follow the patterns rather than reproducing existing questions.
+
+## Avoid
+
+- Copying or closely paraphrasing copyrighted test questions or answer explanations from past/archived tests.
+- Including long excerpts from any source. Summarize patterns instead.
+- Treating leaked/unauthorized “archives” as a data source.
+

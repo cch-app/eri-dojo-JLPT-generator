@@ -1,0 +1,15 @@
+---
+description: Run unit and integration tests with pytest after changes
+alwaysApply: true
+---
+
+# Testing requirement: run `pytest` after changes
+
+When new implementations or code changes are complete, run **unit and integration tests** using `pytest` before considering the work finished.
+
+## Required behavior
+
+- Run tests locally via the project environment (prefer `uv run pytest`).
+- Ensure both **unit** and **integration** tests are executed (use the project’s test selection conventions, e.g. markers, folders, or config).
+- If tests fail, fix the underlying issue and re-run `pytest` until passing.
+

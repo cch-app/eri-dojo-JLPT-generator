@@ -2,22 +2,13 @@
   "version": 2,
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": ".web/build/client"
-      }
-    },
-    {
-      "src": "api/asgi.py",
+      "src": "api/wsgi.py",
       "use": "@vercel/python"
     }
   ],
   "cleanUrls": true,
   "trailingSlash": false,
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/asgi.py" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "api/wsgi.py" }
   ]
 }

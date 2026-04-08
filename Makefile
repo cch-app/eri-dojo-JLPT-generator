@@ -1,4 +1,4 @@
-.PHONY: help setup dev dev-prod export-frontend test test-unit test-integration format format-check clean \
+.PHONY: help setup dev dev-prod test test-unit test-integration format format-check clean \
 	docker-build docker-up docker-logs docker-ps docker-down
 
 APP_NAME := JLPT_generator
@@ -7,21 +7,21 @@ OLLAMA_HOST ?= https://ollama.com
 OLLAMA_API_KEY ?=
 OLLAMA_MODEL ?=
 
-API_URL ?= http://localhost:8000
+FLASK_HOST ?= 127.0.0.1
+FLASK_PORT ?= 8000
 
 help:
-	@echo "JLPT Generator (Reflex) - common commands"
+	@echo "JLPT Generator (Flask) - common commands"
 	@echo ""
 	@echo "Local (uv):"
 	@echo "  make setup             Install/sync deps into .venv (uv)"
-	@echo "  make dev               Run Reflex dev server"
-	@echo "  make dev-prod          Run Reflex in prod mode locally"
+	@echo "  make dev               Run Flask dev server"
+	@echo "  make dev-prod          Run gunicorn locally (prod-ish)"
 	@echo "  make test              Run pytest (all)"
 	@echo "  make test-unit         Run unit tests only"
 	@echo "  make test-integration  Run integration tests only"
 	@echo "  make format            Run isort + black"
 	@echo "  make format-check      Check formatting without modifying files"
-	@echo "  make export-frontend   Export static frontend (set API_URL for deployment)"
 	@echo "  make clean             Remove build artifacts"
 	@echo ""
 	@echo "Docker Compose:"
@@ -35,10 +35,13 @@ setup:
 	uv sync
 
 dev:
-	OLLAMA_HOST="$(OLLAMA_HOST)" OLLAMA_API_KEY="$(OLLAMA_API_KEY)" OLLAMA_MODEL="$(OLLAMA_MODEL)" uv run reflex run
+	OLLAMA_HOST="$(OLLAMA_HOST)" OLLAMA_API_KEY="$(OLLAMA_API_KEY)" OLLAMA_MODEL="$(OLLAMA_MODEL)" \
+	FLASK_APP="api.wsgi:app" FLASK_ENV=development \
+	uv run flask run --host "$(FLASK_HOST)" --port "$(FLASK_PORT)"
 
 dev-prod:
-	OLLAMA_HOST="$(OLLAMA_HOST)" OLLAMA_API_KEY="$(OLLAMA_API_KEY)" OLLAMA_MODEL="$(OLLAMA_MODEL)" uv run reflex run --env prod
+	OLLAMA_HOST="$(OLLAMA_HOST)" OLLAMA_API_KEY="$(OLLAMA_API_KEY)" OLLAMA_MODEL="$(OLLAMA_MODEL)" \
+	uv run gunicorn -w 2 -b 0.0.0.0:8000 api.wsgi:app
 
 test:
 	uv run pytest
@@ -56,11 +59,6 @@ format:
 format-check:
 	uv run isort . --check-only
 	uv run black . --check
-
-export-frontend:
-	API_URL="$(API_URL)" uv run reflex export --frontend-only --no-zip
-	@echo ""
-	@echo "Exported static frontend to: .web/build/client/"
 
 clean:
 	rm -rf .web/build .pytest_cache .ruff_cache .mypy_cache **/__pycache__

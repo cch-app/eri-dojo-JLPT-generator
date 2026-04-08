@@ -1,0 +1,137 @@
+{% extends "_layout.html" %}
+{% set title = "JLPT Mock Generator - Results" %}
+
+{% block content %}
+  <div class="rounded-xl border-2 border-sky-200 bg-white/90 p-6 shadow-md shadow-sky-200/45">
+    <div class="text-xl font-semibold text-sky-900">{{ t(ui_locale, "results") }}</div>
+    <div class="mt-2 text-sm text-slate-700">
+      {{ t(ui_locale, "score") }} {{ summary.correct }}/{{ summary.total_answered }}
+      {% if summary.total_answered %}
+        ({{ (summary.accuracy * 100) | round(1) }}%)
+      {% endif %}
+    </div>
+
+    {% if analysis_html %}
+      <div class="mt-5 rounded-xl border-2 border-sky-300 bg-white p-4 text-sm text-slate-800">
+        <div class="prose prose-slate max-w-none prose-headings:text-sky-900 prose-strong:text-sky-900 prose-code:bg-sky-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+          {{ analysis_html | safe }}
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('web.download_feedback_pdf') }}" class="mt-4">
+        <input type="hidden" name="token" value="{{ token }}" />
+        <button
+          type="submit"
+          class="w-full rounded-xl bg-sky-600 p-3 font-semibold text-white shadow-md shadow-sky-400/45 hover:bg-sky-500 active:bg-sky-700"
+        >
+          {{ t(ui_locale, "download_pdf") }}
+        </button>
+      </form>
+    {% else %}
+      {% if stream_enabled %}
+        <div id="analysis-skeleton" class="mt-5 rounded-xl border-2 border-sky-200 bg-white p-4">
+          <div class="h-4 w-40 rounded bg-sky-100 animate-pulse"></div>
+          <div class="mt-4 space-y-2">
+            <div class="h-3 w-full rounded bg-sky-100 animate-pulse"></div>
+            <div class="h-3 w-11/12 rounded bg-sky-100 animate-pulse"></div>
+            <div class="h-3 w-10/12 rounded bg-sky-100 animate-pulse"></div>
+            <div class="h-3 w-9/12 rounded bg-sky-100 animate-pulse"></div>
+          </div>
+          <div class="mt-4 text-sm text-slate-500">
+            {{ t(ui_locale, "analyzing_session") }}
+          </div>
+        </div>
+
+        <div id="analysis-panel" class="hidden mt-5 rounded-xl border-2 border-sky-300 bg-white p-4 text-sm text-slate-800">
+          <div id="analysis-html" class="prose prose-slate max-w-none prose-headings:text-sky-900 prose-strong:text-sky-900 prose-code:bg-sky-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded"></div>
+        </div>
+
+        <form id="pdf-form" method="post" action="{{ url_for('web.download_feedback_pdf') }}" class="hidden mt-4">
+          <input id="pdf-token" type="hidden" name="token" value="{{ token }}" />
+          <button
+            type="submit"
+            class="w-full rounded-xl bg-sky-600 p-3 font-semibold text-white shadow-md shadow-sky-400/45 hover:bg-sky-500 active:bg-sky-700"
+          >
+            {{ t(ui_locale, "download_pdf") }}
+          </button>
+        </form>
+      {% else %}
+        <div class="mt-5 text-sm text-slate-600">
+          {{ t(ui_locale, "no_analysis") }}
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <form method="get" action="{{ url_for('web.setup_page') }}" class="mt-6">
+      <button
+        id="start-over-btn"
+        type="submit"
+        class="w-full rounded-xl border-2 border-sky-300 bg-white p-3 font-medium text-slate-800 hover:bg-sky-50 hover:border-sky-500{% if stream_enabled and not analysis_html %} opacity-50 cursor-not-allowed{% endif %}"
+        {% if stream_enabled and not analysis_html %}disabled aria-disabled="true"{% endif %}
+      >
+        {{ t(ui_locale, "start_over") }}
+      </button>
+    </form>
+
+    {% if stream_enabled and not analysis_html %}
+      <script>
+        (function () {
+          function hideSkeleton(el) {
+            if (!el) return;
+            el.hidden = true;
+            el.setAttribute("hidden", "");
+            el.classList.add("hidden");
+            el.style.display = "none";
+          }
+          function showPanel(panelEl, htmlEl, html) {
+            if (html) htmlEl.innerHTML = html;
+            panelEl.classList.remove("hidden");
+            panelEl.style.display = "";
+          }
+          function setStartOverEnabled(enabled) {
+            const btn = document.getElementById("start-over-btn");
+            if (!btn) return;
+            btn.disabled = !enabled;
+            btn.setAttribute("aria-disabled", enabled ? "false" : "true");
+            btn.classList.toggle("opacity-50", !enabled);
+            btn.classList.toggle("cursor-not-allowed", !enabled);
+          }
+          const src = new EventSource("{{ url_for('web.stream_analysis') }}?token={{ token | urlencode }}");
+          const skeleton = document.getElementById("analysis-skeleton");
+          const panel = document.getElementById("analysis-panel");
+          const htmlEl = document.getElementById("analysis-html");
+          const pdfForm = document.getElementById("pdf-form");
+          const pdfToken = document.getElementById("pdf-token");
+
+          setStartOverEnabled(false);
+          src.onmessage = (ev) => {
+            try {
+              const msg = JSON.parse(ev.data);
+              if (msg.type === "done") {
+                hideSkeleton(skeleton);
+                if (msg.token) pdfToken.value = msg.token;
+                showPanel(panel, htmlEl, msg.analysis_html || "");
+                pdfForm.classList.remove("hidden");
+                pdfForm.style.display = "";
+                setStartOverEnabled(true);
+                src.close();
+              } else if (msg.type === "error") {
+                src.close();
+                hideSkeleton(skeleton);
+                showPanel(panel, htmlEl, "<p>" + (msg.message || "Error") + "</p>");
+                setStartOverEnabled(true);
+              }
+            } catch (e) {
+              // ignore
+            }
+          };
+          src.onerror = function () {
+            hideSkeleton(skeleton);
+            setStartOverEnabled(true);
+          };
+        })();
+      </script>
+    {% endif %}
+  </div>
+{% endblock %}
+

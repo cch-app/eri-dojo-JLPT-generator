@@ -1,0 +1,106 @@
+{% extends "_layout.html" %}
+{% set title = "JLPT Mock Generator" %}
+{% set ui_locale = (form.get("ui_locale") if form else (ui_locale or "en")) %}
+
+{% block content %}
+  <div class="rounded-xl border-2 border-sky-200 bg-white/90 p-6 shadow-md shadow-sky-200/45">
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-white/70 backdrop-blur-sm">
+      <div class="mx-auto mt-24 max-w-md rounded-xl border-2 border-sky-200 bg-white p-6 shadow-md shadow-sky-200/45">
+        <div class="h-4 w-40 rounded bg-sky-100 animate-pulse"></div>
+        <div class="mt-4 space-y-2">
+          <div class="h-3 w-full rounded bg-sky-100 animate-pulse"></div>
+          <div class="h-3 w-11/12 rounded bg-sky-100 animate-pulse"></div>
+          <div class="h-3 w-10/12 rounded bg-sky-100 animate-pulse"></div>
+        </div>
+        <div class="mt-4 text-sm text-slate-500">
+          {{ t(ui_locale, "generating_questions") }}
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('web.start') }}" class="space-y-5" onsubmit="document.getElementById('loading-overlay').classList.remove('hidden');">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "language") }}</label>
+          <select
+            name="ui_locale"
+            class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
+            onchange="window.location = '{{ url_for('web.setup_page') }}' + '?ui_locale=' + encodeURIComponent(this.value);"
+          >
+            {% for code in supported_locales %}
+              <option value="{{ code }}" {% if ui_locale == code %}selected{% endif %}>
+                {{ locale_label_for_code(ui_locale, code) if locale_label_for_code else code }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "level") }}</label>
+          <select
+            name="level"
+            class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
+          >
+            {% for lvl in levels %}
+              <option value="{{ lvl }}" {% if form and form.get("level") == lvl %}selected{% endif %}>
+                {{ lvl }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "section") }}</label>
+          <select
+            name="section"
+            class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
+          >
+            {% for sec in sections %}
+              <option value="{{ sec }}" {% if form and form.get("section") == sec %}selected{% endif %}>
+                {{ label_for_section(ui_locale, sec) if label_for_section else sec }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="mt-2 text-xs text-slate-500">
+            {{ t(ui_locale, "section_listening") }}: audio playback isn’t implemented yet.
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "category") }}</label>
+          <select
+            name="category"
+            class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
+          >
+            {% set cat = (form.get("category") if form else (reading_categories[0] if reading_categories else "")) %}
+            {% for c in reading_categories %}
+              <option value="{{ c }}" {% if cat == c %}selected{% endif %}>
+                {{ label_for_category(ui_locale, c) if label_for_category else c }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "num_questions") }} (max 20)</label>
+          <input
+            type="number"
+            name="num_questions"
+            min="1"
+            max="20"
+            value="{{ form.get('num_questions') if form else 10 }}"
+            class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        class="w-full rounded-xl bg-sky-600 p-3 font-semibold text-white shadow-md shadow-sky-400/45 hover:bg-sky-500 active:bg-sky-700"
+      >
+        {{ t(ui_locale, "start") }}
+      </button>
+    </form>
+  </div>
+{% endblock %}
+

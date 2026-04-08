@@ -6,6 +6,8 @@ from pathlib import Path
 from fpdf import FPDF
 from fpdf.html import HTMLMixin
 
+from JLPT_generator.text.feedback_preprocess import preprocess_feedback_markdown
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _FONT_PATH = _REPO_ROOT / "assets" / "fonts" / "NotoSansTC-Regular.ttf"
 
@@ -38,7 +40,7 @@ def _markdown_to_basic_html(markdown: str) -> str:
     Goal: keep PDF output aligned with what the UI displays (markdown), without
     needing a full markdown engine.
     """
-    md = markdown.replace("\r\n", "\n").strip("\n")
+    md = preprocess_feedback_markdown(markdown.replace("\r\n", "\n")).strip("\n")
     lines = md.split("\n")
 
     html_parts: list[str] = []
@@ -47,6 +49,8 @@ def _markdown_to_basic_html(markdown: str) -> str:
     para_buf: list[str] = []
     in_ul = False
     in_ol = False
+    in_table = False
+    table_header: list[str] = []
 
     def flush_para() -> None:
         nonlocal para_buf
@@ -63,6 +67,21 @@ def _markdown_to_basic_html(markdown: str) -> str:
         if in_ol:
             html_parts.append("</ol>")
             in_ol = False
+
+    def flush_table_as_list() -> None:
+        nonlocal in_table, table_header
+        if not in_table:
+            return
+        # FPDF's HTML support is limited; convert markdown tables into bullet lists
+        # like "Header: value" lines to avoid visible pipe syntax.
+        if table_header:
+            html_parts.append("<ul>")
+            html_parts.append(
+                f"<li>{_markdown_inline_to_html(' / '.join(table_header))}<br/></li>"
+            )
+            html_parts.append("</ul>")
+        in_table = False
+        table_header = []
 
     for raw in lines:
         line = raw.rstrip("\n")
@@ -85,10 +104,51 @@ def _markdown_to_basic_html(markdown: str) -> str:
             code_buf.append(line)
             continue
 
+        # Horizontal rule (3+ repeated rule chars)
+        if re.match(r"^[-─*_\s]{3,}$", stripped) and re.search(r"[-─*_]{3,}", stripped):
+            flush_para()
+            close_lists()
+            flush_table_as_list()
+            html_parts.append("<br/>")
+            continue
+
+        # Blockquote
+        if stripped.startswith(">"):
+            flush_para()
+            close_lists()
+            flush_table_as_list()
+            q = stripped.lstrip(">").strip()
+            html_parts.append(f"<p><i>{_markdown_inline_to_html(q)}</i></p>")
+            continue
+
         if not stripped:
             flush_para()
             close_lists()
+            flush_table_as_list()
             continue
+
+        # Table separator line: triggers table mode if previous line was header
+        if re.match(r"^\s*\|?[\s:\-|\+]+\|?\s*$", line) and para_buf and "|" in para_buf[-1]:
+            header_line = para_buf.pop()
+            flush_para()
+            close_lists()
+            in_table = True
+            table_header = [p.strip() for p in header_line.strip().strip("|").split("|")]
+            continue
+
+        if in_table and "|" in line:
+            # Convert each table row into "Header: cell" bullets.
+            cells = [p.strip() for p in line.strip().strip("|").split("|")]
+            if table_header and len(cells) >= 2:
+                html_parts.append("<ul>")
+                for h, c in zip(table_header, cells):
+                    if h and c:
+                        html_parts.append(
+                            f"<li>{_markdown_inline_to_html(h)}: {_markdown_inline_to_html(c)}<br/></li>"
+                        )
+                html_parts.append("</ul>")
+                continue
+            flush_table_as_list()
 
         m_ol = re.match(r"^\s*(\d+)\.\s+(.*)$", line)
         m_ul = re.match(r"^\s*[-*]\s+(.*)$", line)
@@ -120,6 +180,7 @@ def _markdown_to_basic_html(markdown: str) -> str:
             continue
 
         close_lists()
+        flush_table_as_list()
         if stripped.startswith("#"):
             flush_para()
             m_h = re.match(r"^(#{1,6})\s+(.*)$", stripped)
@@ -133,6 +194,7 @@ def _markdown_to_basic_html(markdown: str) -> str:
 
     flush_para()
     close_lists()
+    flush_table_as_list()
     if in_code:
         html_parts.append(
             "<pre><code>" + _escape_html("\n".join(code_buf)) + "</code></pre>"
@@ -200,9 +262,20 @@ def build_feedback_pdf_bytes(
     pdf.line(pdf.l_margin, y_rule, pdf.w - pdf.r_margin, y_rule)
     pdf.ln(5)
 
+    # Report section header
+    pdf.set_fill_color(224, 242, 254)  # sky-100
+    pdf.set_draw_color(186, 230, 253)  # sky-200
+    pdf.set_text_color(12, 74, 110)  # sky-ish
+    pdf.set_font(font_family, "", 12)
+    pdf.cell(0, 10, text="Feedback Report", new_x="LMARGIN", new_y="NEXT", fill=True)
+    pdf.ln(2)
+
+    # Content
     pdf.set_text_color(30, 41, 59)  # slate-800-ish
     pdf.set_font(font_family, "", 10)
-    pdf.write_html(_markdown_to_basic_html(markdown_body))
+    body_html = _markdown_to_basic_html(markdown_body)
+    # Wrap to improve spacing without exposing markdown markers.
+    pdf.write_html(f"<div>{body_html}</div>")
 
     out = pdf.output()
     if isinstance(out, (bytes, bytearray)):

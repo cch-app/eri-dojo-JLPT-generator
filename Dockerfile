@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app
 
-EXPOSE 3000 8000
+EXPOSE 8000
 
-# Reflex serves frontend on 3000 and backend on 8000 in prod mode.
-CMD ["reflex", "run", "--env", "prod"]
+# Flask serves on a single port (WSGI via gunicorn).
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "api.wsgi:app"]
 

@@ -1,0 +1,25 @@
+---
+description: Keep changes deployable on Vercel (build/runtime compatible)
+alwaysApply: true
+---
+
+# Vercel deploy readiness (required)
+
+All changes must preserve the ability to deploy this project on **Vercel** without issues.
+
+## Required behavior
+
+- Ensure the project **builds successfully** in a clean environment (no reliance on untracked local files or globally installed tools).
+- Prefer **Vercel-compatible** runtime patterns (serverless/edge constraints, stateless execution).
+- Treat environment configuration as deploy-time concerns:
+  - document required env vars
+  - avoid hardcoding secrets/URLs
+  - provide safe defaults where appropriate
+- Keep platform-specific assumptions out of core logic (filesystem, long-lived background processes, local-only paths).
+
+## Avoid
+
+- Writing to the repo filesystem at runtime as a persistence mechanism.
+- Assuming long-running stateful processes, local daemons, or OS-specific tooling will exist in production.
+- Changes that require manual post-deploy steps to function.
+

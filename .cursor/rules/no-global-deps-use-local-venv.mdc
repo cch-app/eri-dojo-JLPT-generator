@@ -1,0 +1,22 @@
+---
+description: Do not install project dependencies globally; use local venv
+alwaysApply: true
+---
+
+# Dependencies must be local (no global installs)
+
+- Do **not** install this project’s required dependencies globally (system Python, user site-packages, global pip, etc.).
+- Install and run dependencies from a **local virtual environment** inside the repo (prefer `.venv`).
+
+## Required behavior
+
+- If a venv is missing, create it locally (prefer `uv venv`).
+- Install/sync dependencies into the local venv (prefer `uv sync`).
+- Run project commands using the local environment (prefer `uv run ...`).
+
+## Avoid
+
+- `pip install ...` outside a venv
+- `pip install --user ...`
+- Modifying global Python environments to “make it work”
+

@@ -1,0 +1,22 @@
+---
+description: Use uv for Python version + venv + dependency management
+alwaysApply: true
+---
+
+# Local Python development with `uv`
+
+Use `uv` for Python version management, virtual environments, dependency install/sync, and running tooling locally.
+
+## Standard workflow
+
+- **Pin/install Python**: ensure the project’s Python version is managed via `uv` (e.g. `uv python install <version>`), and keep it consistent across machines.
+- **Create venv**: use `uv venv` to create `.venv` in the repo.
+- **Sync deps**: use `uv sync` (preferred) to install/update from `pyproject.toml` and the lockfile.
+- **Run commands**: prefer `uv run <cmd>` (tests, linters, scripts) so execution always uses the project environment.
+
+## Conventions
+
+- Keep dependency sources in `pyproject.toml`.
+- Commit the `uv` lockfile (e.g. `uv.lock`) when it exists and changes.
+- Avoid `pip install ...` directly for local development unless there’s a documented exception.
+

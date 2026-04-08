@@ -1,0 +1,31 @@
+---
+description: Enforce Clean Architecture and SOLID for new changes
+alwaysApply: true
+---
+
+# Clean Architecture + SOLID (required for new changes)
+
+All new changes and implementations must follow **Clean Architecture** concepts and **SOLID** principles to maximize readability, extensibility, and maintainability.
+
+## Clean Architecture checklist
+
+- **Separate concerns**: keep business rules independent from frameworks/UI/IO.
+- **Dependency direction**: dependencies must point inward (outer layers depend on inner layers, never the reverse).
+- **Boundaries**: define clear interfaces/ports at boundaries (e.g., repositories, gateways, services).
+- **Use cases**: organize application behavior around use-cases (what the app does) rather than technical details.
+- **Frameworks as details**: treat web frameworks, DB clients, queues, etc. as replaceable adapters.
+
+## SOLID checklist
+
+- **S (SRP)**: each module/class/function has one reason to change.
+- **O (OCP)**: extend behavior via composition/polymorphism/configuration instead of modifying core logic.
+- **L (LSP)**: subtypes must be safely substitutable for their base types/contracts.
+- **I (ISP)**: prefer small, specific interfaces over large “god” interfaces.
+- **D (DIP)**: depend on abstractions; inject concrete implementations at the edges.
+
+## Implementation expectations
+
+- Prefer **composition** over inheritance.
+- Keep domain/use-case code **free of side effects**; isolate IO at the edges.
+- When adding a new dependency, introduce it behind an **interface** and provide an adapter implementation.
+

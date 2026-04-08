@@ -1,0 +1,12 @@
+---
+description: Always validate containerization via the verify-containerization-docker-compose skill
+alwaysApply: true
+---
+
+# Always verify containerization (required)
+
+When new changes or implementations are made, always utilize the skill `verify-containerization-docker-compose` to ensure this project can be containerized successfully.
+
+- Run the skill as part of the “done” checklist for implementation work.
+- If containerization validation fails, fix the underlying issue and rerun the skill workflow until it passes.
+

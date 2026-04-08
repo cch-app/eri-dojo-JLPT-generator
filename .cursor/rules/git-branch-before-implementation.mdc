@@ -1,0 +1,18 @@
+---
+description: Always create a new git branch before implementation work
+alwaysApply: true
+---
+
+# Git workflow: branch before implementation
+
+- Before doing any implementation work (code changes, refactors, formatting, dependency changes, scaffolding, migrations, etc.), create a new git branch.
+- Do this even if the current branch is clean and has no changes.
+- Prefer a short, descriptive branch name (e.g. `feat/...`, `fix/...`, `chore/...`).
+- If a branch already exists for the current task, continue on that branch (don’t create extra branches).
+
+## Required sequence
+
+1. Confirm repo status (`git status`) to understand current state.
+2. Create and switch to a new branch (`git checkout -b <branch>` or `git switch -c <branch>`).
+3. Only then begin implementation changes.
+

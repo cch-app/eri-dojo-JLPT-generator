@@ -1,0 +1,44 @@
+---
+description: Prefer structural match over long if/elif chains when branching on the same value (Python 3.10+)
+globs: **/*.py
+alwaysApply: true
+---
+
+# match for multi-branch conditionals
+
+## Rule
+
+When the **same expression** is compared against **multiple discrete alternatives**, use **`match`** instead of **`if` / `elif`** when you would otherwise write **`if`** plus **two or more `elif`** (**three or more** branches on that discriminant). This matches “more than two conditions” on the same value before a final `else`.
+
+```python
+# ❌ Avoid — same discriminant, many elifs
+if status == "pending":
+    ...
+elif status == "running":
+    ...
+elif status == "done":
+    ...
+elif status == "failed":
+    ...
+
+# ✅ Prefer
+match status:
+    case "pending":
+        ...
+    case "running":
+        ...
+    case "done":
+        ...
+    case "failed":
+        ...
+```
+
+## When not to force match
+
+- **Unrelated predicates** (`if a > 0`, `elif b is None`)—`match` is not a readability win; keep `if`/`elif` or split logic.
+- **Ranges or inequalities**—use `if`/`elif` or map to a discriminant first, then `match`.
+- **Python 3.9 or older** targets—this project uses **3.13**, so `match` is available.
+
+## Enum / sealed-style types
+
+Prefer **`match`** on **`Enum`** members or small literal sets; use **`case _`** (or exhaustiveness checks) for defaults instead of a long final `else`.

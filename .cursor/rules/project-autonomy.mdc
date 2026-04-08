@@ -1,0 +1,27 @@
+---
+description: Avoid silent failures, secrets leaks, and undocumented manual steps that force human-in-the-loop
+alwaysApply: true
+---
+
+# Project autonomy & safety
+
+## Failures must be visible
+
+- Do not swallow errors with bare `except:` or `except Exception: pass` on critical paths (network, persistence, auth). Log or re-raise with context, or map to a **recoverable** user-facing message.
+- Avoid `NotImplementedError` or placeholder returns on paths reachable in normal use; if temporarily unimplemented, fail with a **clear** message or gate behind a feature flag with explicit behavior.
+
+## No surprise manual steps
+
+- Secrets and keys: never commit them. Use `.env` (ignored), env vars, or CI secrets; document **exactly** what the developer must set for a first-time run (variable **names**, not values).
+- If a feature only works in a specific environment or needs extra tooling, document it and fail at runtime with **actionable** text, not a vague traceback.
+
+## Builds and CI (uv)
+
+- This project uses **uv** for **Python version management** and the **virtual environment** (`.venv`). Document a first-time setup: e.g. **`uv python install 3.13`**, **`uv python pin 3.13`** (or commit **`.python-version`**), **`uv venv`** to create `.venv`, and **`uv sync`** to install from **`pyproject.toml` + `uv.lock`**.
+- Run tools and apps with **`uv run <command>`** (or activate `.venv` and run commands) so everyone uses the same interpreter and locked deps.
+- Commit **`uv.lock`**; add or upgrade deps with **`uv add`** / **`uv add --dev`**, not ad-hoc **`pip install`**, unless documented as an exception.
+- Changes that need migrations, codegen, or one-off steps must include **scripted or documented** steps so CI and teammates do not get stuck.
+
+## Networking and time
+
+- All HTTP clients must use **timeouts** and honor **task cancellation** (`asyncio`, **httpx**, **aiohttp**) so the app never hangs waiting for a server that never responds.

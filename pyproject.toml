@@ -1,0 +1,35 @@
+[project]
+name = "jlpt-generator"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fpdf2>=2.8.7",
+    "httpx>=0.28.1",
+    "ollama>=0.6.1",
+    "pydantic>=2.12.5",
+    "reflex>=0.8.28.post1",
+]
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+    "isort>=8.0.1",
+    "pytest>=9.0.2",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "unit: fast, deterministic unit tests",
+  "integration: integration tests (may involve IO, external services, or adapters)",
+]

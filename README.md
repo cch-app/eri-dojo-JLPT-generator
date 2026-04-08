@@ -7,7 +7,7 @@ Generate **original JLPT-style** practice questions (Reading/Listening, N5–N1)
 - **Framework**: [Reflex](https://github.com/reflex-dev/reflex)
 - **Env/deps**: `uv` (local `.venv`)
 - **AI**: [Ollama](https://github.com/ollama/ollama-python) (local daemon or [Ollama Cloud](https://docs.ollama.com/cloud))
-- **Deploy**: Vercel (frontend) + separately hosted Reflex backend (required for websockets/state)
+- **Deploy**: Vercel (static frontend) + separately hosted Reflex backend (required for websockets/state)
 
 ### Local development
 
@@ -83,7 +83,16 @@ uv run reflex run --env prod
 
 #### Frontend (Vercel static export)
 
-Export frontend assets while pointing `API_URL` to your backend:
+This repo includes a `vercel.json` + `scripts/vercel-build.sh` so Vercel can build the static site automatically.
+
+In your Vercel Project Settings, set:
+
+- **Build Command**: (leave default; the repo config handles it)
+- **Output Directory**: (leave default; the repo config handles it)
+- **Environment Variables**:
+  - **API_URL**: The **public origin** of your reverse proxy / backend (must be an absolute URL)
+
+Export frontend assets locally (optional) while pointing `API_URL` to your backend:
 
 ```bash
 API_URL="https://YOUR_BACKEND_HOST:8000" uv run reflex export --frontend-only --no-zip

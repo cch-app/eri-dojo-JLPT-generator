@@ -1,0 +1,7 @@
+{
+  "name": "jlpt-generator-frontend",
+  "private": true,
+  "scripts": {
+    "build": "bash scripts/vercel-build.sh"
+  }
+}

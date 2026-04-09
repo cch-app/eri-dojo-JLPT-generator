@@ -18,7 +18,7 @@
         </div>
       </div>
 
-      <form method="post" action="{{ url_for('web.download_feedback_pdf') }}" class="mt-4">
+      <form method="post" action="{{ url_for_locale('web.download_feedback_pdf') }}" class="mt-4">
         <input type="hidden" name="token" value="{{ token }}" />
         <button
           type="submit"
@@ -46,7 +46,7 @@
           <div id="analysis-html" class="prose prose-slate max-w-none prose-headings:text-sky-900 prose-strong:text-sky-900 prose-code:bg-sky-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded"></div>
         </div>
 
-        <form id="pdf-form" method="post" action="{{ url_for('web.download_feedback_pdf') }}" class="hidden mt-4">
+        <form id="pdf-form" method="post" action="{{ url_for_locale('web.download_feedback_pdf') }}" class="hidden mt-4">
           <input id="pdf-token" type="hidden" name="token" value="{{ token }}" />
           <button
             type="submit"
@@ -62,7 +62,7 @@
       {% endif %}
     {% endif %}
 
-    <form method="get" action="{{ url_for('web.setup_page') }}" class="mt-6">
+    <form method="get" action="{{ url_for_locale('web.setup_page') }}" class="mt-6">
       <button
         id="start-over-btn"
         type="submit"

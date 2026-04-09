@@ -16,7 +16,7 @@
       {{ question.prompt }}
     </div>
 
-    <form method="post" action="{{ url_for('web.submit_answer') }}" class="mt-5 space-y-2">
+    <form method="post" action="{{ url_for_locale('web.submit_answer') }}" class="mt-5 space-y-2">
       <input type="hidden" name="token" value="{{ token }}" />
       {% for choice in question.choices %}
         {% set i = loop.index0 %}
@@ -47,7 +47,7 @@
 
         <button
           type="submit"
-          formaction="{{ url_for('web.next_question') }}"
+          formaction="{{ url_for_locale('web.next_question') }}"
           class="w-full rounded-xl border-2 border-sky-300 bg-white p-3 font-medium text-slate-800 hover:bg-sky-50 hover:border-sky-500"
         >
           {% if is_last %}{{ t(ui_locale, "finish") }}{% else %}{{ t(ui_locale, "next") }}{% endif %}

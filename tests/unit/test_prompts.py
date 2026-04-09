@@ -20,9 +20,9 @@ def test_question_generation_prompt_contains_schema():
 @pytest.mark.unit
 def test_final_analysis_prompt_contains_session_payload():
     s = SessionRun(
-        section=QuestionSection.listening,
+        section=QuestionSection.reading,
         level=JLPTLevel.n2,
-        category="listening_comprehension",
+        category="reading_comprehension",
         num_questions=3,
     )
     p = final_analysis_prompt(session=s, output_language_name="English")

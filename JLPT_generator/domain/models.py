@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 class QuestionSection(StrEnum):
     reading = "reading"
-    listening = "listening"
+    # listening = "listening"
 
 
 class JLPTLevel(StrEnum):

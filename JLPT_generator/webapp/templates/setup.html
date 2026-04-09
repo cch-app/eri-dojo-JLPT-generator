@@ -18,14 +18,14 @@
       </div>
     </div>
 
-    <form method="post" action="{{ url_for('web.start') }}" class="space-y-5" onsubmit="document.getElementById('loading-overlay').classList.remove('hidden');">
+    <form method="post" action="{{ url_for_locale('web.start') }}" class="space-y-5" onsubmit="document.getElementById('loading-overlay').classList.remove('hidden');">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "language") }}</label>
           <select
+            id="ui-locale-select"
             name="ui_locale"
             class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
-            onchange="window.location = '{{ url_for('web.setup_page') }}' + '?ui_locale=' + encodeURIComponent(this.value);"
           >
             {% for code in supported_locales %}
               <option value="{{ code }}" {% if ui_locale == code %}selected{% endif %}>
@@ -101,6 +101,19 @@
         {{ t(ui_locale, "start") }}
       </button>
     </form>
+
+    <script>
+      (function () {
+        const sel = document.getElementById("ui-locale-select");
+        if (!sel) return;
+        sel.addEventListener("change", function (ev) {
+          const v = ev && ev.target ? ev.target.value : "";
+          const url = new URL(window.location.href);
+          url.searchParams.set("ui_locale", v);
+          window.location = url.toString();
+        });
+      })();
+    </script>
   </div>
 {% endblock %}
 

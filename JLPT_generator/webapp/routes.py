@@ -13,6 +13,7 @@ from flask import (
     render_template,
     request,
     stream_with_context,
+    url_for,
 )
 
 from JLPT_generator.adapters.ai import AiProviderError
@@ -26,6 +27,7 @@ from JLPT_generator.i18n import (
     label_for_category,
     label_for_section,
     locale_label_for_code,
+    map_browser_language,
     translate,
 )
 from JLPT_generator.use_cases.batch_questions import parse_questions_batch_json
@@ -40,6 +42,7 @@ from JLPT_generator.webapp.token_codec import TokenCodec, TokenDecodeError
 bp = Blueprint("web", __name__)
 
 MAX_NUM_QUESTIONS = 20
+UI_LOCALE_COOKIE = "ui_locale"
 
 READING_CATEGORIES = [
     "grammar",
@@ -82,31 +85,58 @@ def _render_error(ui_locale: str, message_key: str, *, detail: str = "") -> str:
     return translate(ui_locale, message_key, detail=detail) if detail else translate(ui_locale, message_key)
 
 
-@bp.get("/")
-def setup_page() -> str:
-    ui_locale = (request.args.get("ui_locale") or "en").strip()
-    if ui_locale not in SUPPORTED_LOCALES:
-        ui_locale = "en"
-    return render_template(
-        "setup.html",
-        supported_locales=SUPPORTED_LOCALES,
-        reading_categories=READING_CATEGORIES,
-        listening_categories=LISTENING_CATEGORIES,
-        levels=[lvl.value for lvl in JLPTLevel],
-        sections=[sec.value for sec in QuestionSection],
-        t=translate,
-        ui_locale=ui_locale,
-        locale_label_for_code=locale_label_for_code,
-        label_for_section=label_for_section,
-        label_for_category=label_for_category,
+def _url_for_locale(ui_locale: str):
+    def _inner(endpoint: str, **values: Any) -> str:
+        values.setdefault("ui_locale", ui_locale)
+        return url_for(endpoint, **values)
+
+    return _inner
+
+
+def _normalize_ui_locale(raw: str | None) -> str:
+    ui_locale = (raw or "en").strip()
+    return ui_locale if ui_locale in SUPPORTED_LOCALES else "en"
+
+
+def _resolve_ui_locale() -> str:
+    return _normalize_ui_locale(
+        request.args.get(UI_LOCALE_COOKIE)
+        or request.form.get(UI_LOCALE_COOKIE)
+        or request.cookies.get(UI_LOCALE_COOKIE)
     )
 
 
+@bp.get("/")
+def setup_page() -> Response:
+    ui_locale = _resolve_ui_locale()
+    resp = make_response(
+        render_template(
+            "setup.html",
+            supported_locales=SUPPORTED_LOCALES,
+            reading_categories=READING_CATEGORIES,
+            listening_categories=LISTENING_CATEGORIES,
+            levels=[lvl.value for lvl in JLPTLevel],
+            sections=[sec.value for sec in QuestionSection],
+            t=translate,
+            ui_locale=ui_locale,
+            url_for_locale=_url_for_locale(ui_locale),
+            locale_label_for_code=locale_label_for_code,
+            label_for_section=label_for_section,
+            label_for_category=label_for_category,
+        )
+    )
+    resp.set_cookie(
+        UI_LOCALE_COOKIE,
+        ui_locale,
+        max_age=60 * 60 * 24 * 30,
+        samesite="Lax",
+    )
+    return resp
+
+
 @bp.post("/start")
-def start() -> str:
-    ui_locale = (request.form.get("ui_locale") or "en").strip()
-    if ui_locale not in SUPPORTED_LOCALES:
-        ui_locale = "en"
+def start() -> Response:
+    ui_locale = _resolve_ui_locale()
 
     section = (request.form.get("section") or QuestionSection.reading.value).strip()
     level = (request.form.get("level") or JLPTLevel.n5.value).strip()
@@ -144,27 +174,37 @@ def start() -> str:
             raw2 = provider.complete_text(prompt=repair)
             parsed = parse_questions_batch_json(text=raw2, expected_count=num_questions)
         except Exception as e2:  # noqa: BLE001
-            return render_template(
-                "setup.html",
-                supported_locales=SUPPORTED_LOCALES,
-                reading_categories=READING_CATEGORIES,
-                listening_categories=LISTENING_CATEGORIES,
-                levels=[lvl.value for lvl in JLPTLevel],
-                sections=[sec.value for sec in QuestionSection],
-                t=translate,
-                ui_locale=ui_locale,
-                locale_label_for_code=locale_label_for_code,
-                label_for_section=label_for_section,
-                label_for_category=label_for_category,
-                error=_render_error(ui_locale, "err_generate", detail=str(e2)),
-                form={
-                    "ui_locale": ui_locale,
-                    "section": section,
-                    "level": level,
-                    "category": category,
-                    "num_questions": num_questions,
-                },
+            resp = make_response(
+                render_template(
+                    "setup.html",
+                    supported_locales=SUPPORTED_LOCALES,
+                    reading_categories=READING_CATEGORIES,
+                    listening_categories=LISTENING_CATEGORIES,
+                    levels=[lvl.value for lvl in JLPTLevel],
+                    sections=[sec.value for sec in QuestionSection],
+                    t=translate,
+                    ui_locale=ui_locale,
+                    url_for_locale=_url_for_locale(ui_locale),
+                    locale_label_for_code=locale_label_for_code,
+                    label_for_section=label_for_section,
+                    label_for_category=label_for_category,
+                    error=_render_error(ui_locale, "err_generate", detail=str(e2)),
+                    form={
+                        "ui_locale": ui_locale,
+                        "section": section,
+                        "level": level,
+                        "category": category,
+                        "num_questions": num_questions,
+                    },
+                )
             )
+            resp.set_cookie(
+                UI_LOCALE_COOKIE,
+                ui_locale,
+                max_age=60 * 60 * 24 * 30,
+                samesite="Lax",
+            )
+            return resp
 
     payload: dict[str, Any] = {
         "v": 1,
@@ -181,7 +221,14 @@ def start() -> str:
         "final_analysis": "",
     }
     token = _codec().encode(payload)
-    return _render_test(payload, token=token, error=None)
+    resp = make_response(_render_test(payload, token=token, error=None))
+    resp.set_cookie(
+        UI_LOCALE_COOKIE,
+        ui_locale,
+        max_age=60 * 60 * 24 * 30,
+        samesite="Lax",
+    )
+    return resp
 
 
 def _current_question(payload: dict[str, Any]) -> dict[str, Any]:
@@ -213,6 +260,7 @@ def _render_test(payload: dict[str, Any], *, token: str, error: Optional[str]) -
         t=translate,
         token=token,
         ui_locale=ui_locale,
+        url_for_locale=_url_for_locale(ui_locale),
         section=str(payload.get("section") or ""),
         section_label=label_for_section(ui_locale, str(payload.get("section") or "")),
         level=str(payload.get("level") or ""),
@@ -289,20 +337,30 @@ def next_question() -> str:
 @bp.post("/finish")
 def finish() -> str:
     payload = _load_payload_from_form()
-    ui_locale = str(payload.get("ui_locale") or "en")
+    ui_locale = str(payload.get("ui_locale") or _resolve_ui_locale())
 
     token = _codec().encode(payload)
-    return render_template(
-        "results.html",
-        t=translate,
-        token=token,
-        ui_locale=ui_locale,
-        error=None,
-        summary=_score_summary(payload),
-        analysis_raw="",
-        analysis_html="",
-        stream_enabled=True,
+    resp = make_response(
+        render_template(
+            "results.html",
+            t=translate,
+            token=token,
+            ui_locale=ui_locale,
+            url_for_locale=_url_for_locale(ui_locale),
+            error=None,
+            summary=_score_summary(payload),
+            analysis_raw="",
+            analysis_html="",
+            stream_enabled=True,
+        )
     )
+    resp.set_cookie(
+        UI_LOCALE_COOKIE,
+        ui_locale,
+        max_age=60 * 60 * 24 * 30,
+        samesite="Lax",
+    )
+    return resp
 
 
 @bp.get("/stream/analysis")
@@ -409,6 +467,7 @@ def download_feedback_pdf() -> Response:
                 t=translate,
                 token=token,
                 ui_locale=ui_locale,
+                url_for_locale=_url_for_locale(ui_locale),
                 error=_render_error(ui_locale, "err_no_feedback_pdf"),
                 summary=_score_summary(payload),
                 analysis_raw="",

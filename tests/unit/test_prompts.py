@@ -4,6 +4,7 @@ from JLPT_generator.domain import JLPTLevel, QuestionSection, SessionRun
 from JLPT_generator.use_cases.prompts import (
     final_analysis_prompt,
     question_generation_prompt,
+    questions_stream_delimited_prompt,
 )
 
 
@@ -15,6 +16,19 @@ def test_question_generation_prompt_contains_schema():
     assert "Return ONLY valid JSON" in p
     assert '"choices"' in p
     assert "answer_index" in p
+
+
+@pytest.mark.unit
+def test_questions_stream_prompt_contains_delimiters():
+    p = questions_stream_delimited_prompt(
+        section=QuestionSection.reading,
+        level=JLPTLevel.n4,
+        category="grammar",
+        num_questions=3,
+        explanation_locale="English",
+    )
+    assert "<QUESTION_START>" in p
+    assert "<QUESTION_END>" in p
 
 
 @pytest.mark.unit

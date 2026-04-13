@@ -1,0 +1,263 @@
+{% extends "_layout.html" %}
+{% set title = "JLPT Mock Generator" %}
+
+{% block content %}
+  <div id="quiz-stream-app" class="space-y-4">
+    <div
+      id="loading-overlay"
+      class="fixed inset-0 z-40 flex items-start justify-center bg-white/80 pt-24 backdrop-blur-sm"
+    >
+      <div class="mx-4 w-full max-w-md rounded-xl border-2 border-sky-200 bg-white p-6 shadow-md shadow-sky-200/45">
+        <div class="h-4 w-40 rounded bg-sky-100 animate-pulse"></div>
+        <div class="mt-4 space-y-2">
+          <div class="h-3 w-full rounded bg-sky-100 animate-pulse"></div>
+          <div class="h-3 w-11/12 rounded bg-sky-100 animate-pulse"></div>
+          <div class="h-3 w-10/12 rounded bg-sky-100 animate-pulse"></div>
+        </div>
+        <div id="generation-status-text" class="mt-4 text-sm text-slate-500">
+          {{ t(ui_locale, "generating_questions") }}
+        </div>
+      </div>
+    </div>
+
+    <div id="quiz-mount"></div>
+
+    <form method="get" action="{{ url_for_locale('web.setup_page') }}" class="pt-2">
+      <button
+        type="submit"
+        class="w-full rounded-xl border-2 border-sky-300 bg-white p-3 font-medium text-slate-800 hover:bg-sky-50 hover:border-sky-500"
+      >
+        {{ t(ui_locale, "back_setup") }}
+      </button>
+    </form>
+  </div>
+
+  <script>
+    (function () {
+      const launchToken = {{ launch_token | tojson }};
+      const streamUrl = {{ stream_questions_url | tojson }};
+      const mergeUrl = {{ quiz_stream_merge_url | tojson }};
+      const finalizeUrl = {{ quiz_stream_finalize_url | tojson }};
+      const setupPageUrl = {{ url_for_locale("web.setup_page") | tojson }};
+
+      const overlay = document.getElementById("loading-overlay");
+      const mount = document.getElementById("quiz-mount");
+      const app = document.getElementById("quiz-stream-app");
+
+      let sessionToken = null;
+      let mergeChain = Promise.resolve();
+      let displayedIndex = null;
+      let formNavigationPending = false;
+
+      function syncDisplayedIndexFromDom() {
+        const root = mount.querySelector("#quiz-mount-root");
+        if (!root) {
+          return;
+        }
+        const raw = root.getAttribute("data-current-index");
+        if (raw === null) {
+          return;
+        }
+        const n = parseInt(String(raw), 10);
+        if (!Number.isNaN(n)) {
+          displayedIndex = n;
+        }
+      }
+
+      function patchChromeFromHtml(html) {
+        const doc = new DOMParser().parseFromString(String(html).trim(), "text/html");
+        const newRoot = doc.querySelector("#quiz-mount-root");
+        const liveRoot = mount.querySelector("#quiz-mount-root");
+        if (!newRoot || !liveRoot) {
+          return;
+        }
+        for (let i = 0; i < newRoot.attributes.length; i++) {
+          const attr = newRoot.attributes[i];
+          if (attr.name.indexOf("data-") === 0) {
+            liveRoot.setAttribute(attr.name, attr.value);
+          }
+        }
+        const newCounter = doc.querySelector("#quiz-question-counter");
+        const liveCounter = liveRoot.querySelector("#quiz-question-counter");
+        if (newCounter && liveCounter) {
+          liveCounter.replaceWith(doc.importNode(newCounter, true));
+        }
+        const newNav = doc.querySelector("#quiz-secondary-nav");
+        const liveNav = liveRoot.querySelector("#quiz-secondary-nav");
+        if (newNav && liveNav) {
+          liveNav.replaceWith(doc.importNode(newNav, true));
+        }
+      }
+
+      function mountHtml(html) {
+        mount.innerHTML = html;
+        syncDisplayedIndexFromDom();
+      }
+
+      async function postJson(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "X-Quiz-Stream": "1",
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(function () {
+          return { ok: false, error: "Invalid response" };
+        });
+        return data;
+      }
+
+      function enqueueMerge(fn) {
+        mergeChain = mergeChain.then(fn).catch(function (e) {
+          console.error(e);
+        });
+      }
+
+      async function mergeQuestion(index, question) {
+        const payload =
+          sessionToken == null
+            ? { launch_token: launchToken, index: index, question: question }
+            : { token: sessionToken, index: index, question: question };
+        const data = await postJson(mergeUrl, payload);
+        if (!data.ok) {
+          throw new Error(data.error || "merge failed");
+        }
+        sessionToken = data.token;
+        if (data.duplicate) {
+          return;
+        }
+        const hasMountedQuiz = !!mount.querySelector("#quiz-action-form");
+        const incomingIndex = index;
+        const patchOnly =
+          !formNavigationPending &&
+          hasMountedQuiz &&
+          displayedIndex !== null &&
+          incomingIndex > displayedIndex;
+
+        if (formNavigationPending) {
+          const tokenInput = mount.querySelector('input[name="token"]');
+          if (tokenInput) {
+            tokenInput.value = sessionToken;
+          }
+        } else if (patchOnly) {
+          const tokenInput = mount.querySelector('input[name="token"]');
+          if (tokenInput) {
+            tokenInput.value = sessionToken;
+          }
+          patchChromeFromHtml(data.html);
+        } else {
+          mountHtml(data.html);
+          overlay.classList.add("hidden");
+        }
+      }
+
+      async function finalizeStream() {
+        if (!sessionToken) return;
+        const data = await postJson(finalizeUrl, { token: sessionToken });
+        if (data.ok) {
+          sessionToken = data.token;
+          const hasMountedQuiz = !!mount.querySelector("#quiz-action-form");
+          if (hasMountedQuiz) {
+            const tokenInput = mount.querySelector('input[name="token"]');
+            if (tokenInput) {
+              tokenInput.value = sessionToken;
+            }
+            patchChromeFromHtml(data.html);
+          } else {
+            mountHtml(data.html);
+          }
+          overlay.classList.add("hidden");
+        }
+      }
+
+      const src = new EventSource(streamUrl + "?token=" + encodeURIComponent(launchToken));
+
+      src.onmessage = function (ev) {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === "question") {
+            enqueueMerge(function () {
+              return mergeQuestion(msg.index, msg.question);
+            });
+          } else if (msg.type === "done") {
+            src.close();
+            enqueueMerge(finalizeStream);
+          } else if (msg.type === "error") {
+            src.close();
+            overlay.classList.add("hidden");
+            window.location.href = setupPageUrl;
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+
+      src.onerror = function () {
+        try {
+          src.close();
+        } catch (e) {}
+      };
+
+      app.addEventListener("submit", async function (ev) {
+        const form = ev.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (!form.closest("#quiz-mount")) return;
+        ev.preventDefault();
+        if (!sessionToken) return;
+
+        formNavigationPending = true;
+        const submitter = ev.submitter;
+        let targetUrl = form.getAttribute("action") || "";
+        const fa = submitter && submitter.getAttribute("formaction");
+        if (fa) {
+          targetUrl = fa;
+        }
+
+        const fd = new FormData(form);
+        const token = String(fd.get("token") || sessionToken);
+        const selectedRaw = fd.get("selected_index");
+        const u = new URL(targetUrl, window.location.origin);
+        const isNext = u.pathname.endsWith("/next");
+
+        let body;
+        if (isNext) {
+          body = { token: token };
+        } else {
+          body = {
+            token: token,
+            selected_index:
+              selectedRaw === null || selectedRaw === ""
+                ? null
+                : Number(selectedRaw),
+          };
+        }
+
+        try {
+          const data = await postJson(targetUrl, body);
+          if (data.action === "post_finish") {
+            const f = document.createElement("form");
+            f.method = "POST";
+            f.action = data.finish_url;
+            const inp = document.createElement("input");
+            inp.type = "hidden";
+            inp.name = "token";
+            inp.value = data.token;
+            f.appendChild(inp);
+            document.body.appendChild(f);
+            f.submit();
+            return;
+          }
+          if (data.html) {
+            sessionToken = data.token || sessionToken;
+            mountHtml(data.html);
+          }
+        } finally {
+          formNavigationPending = false;
+        }
+      });
+    })();
+  </script>
+{% endblock %}

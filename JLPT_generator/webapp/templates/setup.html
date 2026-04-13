@@ -4,7 +4,7 @@
 
 {% block content %}
   <div class="rounded-xl border-2 border-sky-200 bg-white/90 p-6 shadow-md shadow-sky-200/45">
-    <div id="loading-overlay" class="hidden fixed inset-0 bg-white/70 backdrop-blur-sm">
+    <div id="loading-overlay" class="hidden fixed inset-0 z-40 bg-white/70 backdrop-blur-sm">
       <div class="mx-auto mt-24 max-w-md rounded-xl border-2 border-sky-200 bg-white p-6 shadow-md shadow-sky-200/45">
         <div class="h-4 w-40 rounded bg-sky-100 animate-pulse"></div>
         <div class="mt-4 space-y-2">
@@ -18,7 +18,12 @@
       </div>
     </div>
 
-    <form method="post" action="{{ url_for_locale('web.start') }}" class="space-y-5" onsubmit="document.getElementById('loading-overlay').classList.remove('hidden');">
+    <form
+      method="post"
+      action="{{ url_for_locale('web.start') }}"
+      class="space-y-5"
+      onsubmit="document.getElementById('loading-overlay').classList.remove('hidden');"
+    >
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "language") }}</label>
@@ -116,4 +121,3 @@
     </script>
   </div>
 {% endblock %}
-

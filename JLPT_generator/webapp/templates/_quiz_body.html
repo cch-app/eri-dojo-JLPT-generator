@@ -1,0 +1,89 @@
+{# Shared quiz card: requires token, ui_locale, url_for_locale, t, section/level/category labels, idx, num_questions, question, revealed, selected_index, is_correct, correct_label, error, stream_waiting_more #}
+{% if error %}
+  <div class="mb-4 rounded-xl border-2 border-rose-200 bg-rose-50 p-4 text-rose-700">
+    {{ error }}
+  </div>
+{% endif %}
+
+<div class="flex flex-wrap items-center justify-between gap-4">
+  <div class="text-sm font-medium text-slate-700">
+    {{ section_label or section }} · {{ level }} · {{ category_label or category }}
+  </div>
+  <div id="quiz-question-counter" class="text-sm text-slate-600">
+    {{ idx + 1 }}/{{ num_questions }}
+    {% if stream_total_requested is defined and stream_total_requested > num_questions %}
+      <span class="text-slate-400">({{ stream_total_requested }} {{ t(ui_locale, "stream_planned_total") }})</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mt-4 text-lg font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">
+  {{ question.prompt }}
+</div>
+
+<form id="quiz-action-form" method="post" action="{{ url_for_locale('web.submit_answer') }}" class="mt-5 space-y-2">
+  <input type="hidden" name="token" value="{{ token }}" />
+  {% for choice in question.choices %}
+    {% set i = loop.index0 %}
+    <label
+      class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-sky-300 bg-white p-3 hover:border-sky-500 hover:bg-sky-50"
+    >
+      <input
+        type="radio"
+        name="selected_index"
+        value="{{ i }}"
+        {% if selected_index is not none and selected_index == i %}checked{% endif %}
+        class="mt-0.5 shrink-0"
+      />
+      <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-800">
+        <span class="font-semibold text-sky-900">{{ ["A","B","C","D"][i] }}.</span><span class="whitespace-pre-wrap"> {{ choice }}</span>
+      </div>
+    </label>
+  {% endfor %}
+
+  <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <button
+      type="submit"
+      class="w-full rounded-xl bg-sky-600 p-3 font-semibold text-white shadow-md shadow-sky-400/45 hover:bg-sky-500 active:bg-sky-700"
+    >
+      {{ t(ui_locale, "check_answer") }}
+    </button>
+    <div id="quiz-secondary-nav" class="contents">
+      {% if stream_waiting_more %}
+        <button
+          type="button"
+          disabled
+          class="w-full cursor-not-allowed rounded-xl border-2 border-sky-200 bg-sky-50 p-3 font-medium text-slate-500"
+        >
+          {{ t(ui_locale, "stream_more_coming") }}
+        </button>
+      {% else %}
+        <button
+          type="submit"
+          formaction="{{ url_for_locale('web.next_question') }}"
+          class="w-full rounded-xl border-2 border-sky-300 bg-white p-3 font-medium text-slate-800 hover:bg-sky-50 hover:border-sky-500"
+        >
+          {% if is_last %}{{ t(ui_locale, "finish") }}{% else %}{{ t(ui_locale, "next") }}{% endif %}
+        </button>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
+{% if revealed %}
+  <div class="mt-6 rounded-xl border-2 border-sky-200 bg-sky-50 p-4">
+    <div class="text-sm font-semibold text-sky-900">
+      {{ t(ui_locale, "answer_prefix") }} {{ correct_label }}
+      {% if is_correct is not none %}
+        {% if is_correct %}
+          <span class="ml-2 text-emerald-700">Correct</span>
+        {% else %}
+          <span class="ml-2 text-rose-700">Incorrect</span>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="mt-3 text-sm text-slate-700 whitespace-pre-wrap">
+      {{ question.explanation }}
+    </div>
+  </div>
+{% endif %}

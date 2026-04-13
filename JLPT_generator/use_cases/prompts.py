@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from JLPT_generator.domain import JLPTLevel, QuestionSection, SessionRun
+from JLPT_generator.parsers.markers import QUESTION_END, QUESTION_START
 
 _EXPLANATION_RULES = (
     "For the 'explanation' field:\n"
@@ -115,6 +116,85 @@ def questions_batch_generation_prompt(
         "- choices: exactly 4 strings.\n"
         "- answer_index: integer 0..3.\n"
         "- section, level, category must match the session values above.\n"
+    )
+
+
+def questions_stream_delimited_prompt(
+    *,
+    section: QuestionSection,
+    level: JLPTLevel,
+    category: str,
+    num_questions: int,
+    explanation_locale: str,
+) -> str:
+    one = _single_question_shape_example(
+        section=section,
+        level=level,
+        category=category,
+        explanation_locale=explanation_locale,
+    )
+    inner_example = json.dumps(one, ensure_ascii=False)
+    return (
+        "You are generating ORIGINAL JLPT-style practice questions.\n"
+        "Do NOT copy or closely paraphrase any real JLPT or copyrighted prep questions.\n"
+        f"Output up to {num_questions} distinct questions for the same session.\n"
+        "Vary topics, grammar points, and vocabulary so questions are not repetitive.\n\n"
+        f"Section: {section.value}\n"
+        f"Level: {level.value}\n"
+        f"Category: {category}\n\n"
+        "Each item: question stem and all four choices must be in Japanese.\n"
+        f"Each item's 'explanation' must be written entirely in {explanation_locale}.\n\n"
+        f"{_EXPLANATION_RULES}\n"
+        "OUTPUT FORMAT (critical):\n"
+        f"- Emit one question at a time using exactly these line-oriented markers:\n"
+        f"  {QUESTION_START}\n"
+        "  <single JSON object only, no markdown fences>\n"
+        f"  {QUESTION_END}\n"
+        "- Repeat for each question.\n"
+        "- Do not wrap the JSON in ``` fences.\n"
+        "- Do not output a top-level array or a 'questions' wrapper.\n"
+        "- JSON objects must match this shape (example values are illustrative):\n"
+        f"{inner_example}\n\n"
+        "Rules per question:\n"
+        "- choices: exactly 4 strings.\n"
+        "- answer_index: integer 0..3.\n"
+        "- section, level, category must match the session values above.\n"
+        f"- Aim for {num_questions} questions; if you must stop early, still keep valid blocks.\n"
+    )
+
+
+def questions_stream_topoff_prompt(
+    *,
+    section: QuestionSection,
+    level: JLPTLevel,
+    category: str,
+    remaining: int,
+    explanation_locale: str,
+    avoid_prompt_snippets: list[str],
+) -> str:
+    one = _single_question_shape_example(
+        section=section,
+        level=level,
+        category=category,
+        explanation_locale=explanation_locale,
+    )
+    inner_example = json.dumps(one, ensure_ascii=False)
+    snippets = "\n".join(f"- {s[:200]}" for s in avoid_prompt_snippets[:12])
+    return (
+        "You are generating additional ORIGINAL JLPT-style practice questions "
+        f"to complete a session ({remaining} more needed).\n"
+        "Do NOT copy or closely paraphrase any real JLPT or copyrighted prep questions.\n"
+        "Do NOT repeat or lightly rephrase questions similar to these stems/snippets:\n"
+        f"{snippets if snippets else '(none)'}\n\n"
+        f"Section: {section.value}\n"
+        f"Level: {level.value}\n"
+        f"Category: {category}\n\n"
+        f"Explanations must be entirely in {explanation_locale}.\n"
+        f"{_EXPLANATION_RULES}\n"
+        "OUTPUT FORMAT:\n"
+        f"Use {QUESTION_START} ... JSON object ... {QUESTION_END} for each question.\n"
+        f"Emit exactly {remaining} complete blocks if possible.\n"
+        f"JSON shape example:\n{inner_example}\n"
     )
 
 

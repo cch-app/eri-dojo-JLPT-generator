@@ -49,6 +49,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cat_point_comprehension": "Point comprehension",
         "cat_listening_comprehension": "Listening comprehension",
         "pdf_generated": "Generated: {date}",
+        "stream_planned_total": "planned",
+        "stream_more_coming": "More questions loading…",
+        "err_wait_more_questions": "More questions are still being generated. Please wait a moment.",
     },
     "ja": {
         "app_title": "JLPT模擬問題ジェネレーター",
@@ -94,6 +97,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cat_point_comprehension": "ポイント理解",
         "cat_listening_comprehension": "聴解（概要）",
         "pdf_generated": "作成日: {date}",
+        "stream_planned_total": "問予定",
+        "stream_more_coming": "他の問題を読み込み中…",
+        "err_wait_more_questions": "まだ問題を生成しています。少し待ってからお試しください。",
     },
     "zh_TW": {
         "app_title": "JLPT 模擬試題產生器",
@@ -139,6 +145,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cat_point_comprehension": "重點理解",
         "cat_listening_comprehension": "聽解（概要）",
         "pdf_generated": "產生日期：{date}",
+        "stream_planned_total": "題預定",
+        "stream_more_coming": "仍在載入更多題目…",
+        "err_wait_more_questions": "題目仍在產生中，請稍候再試。",
     },
 }
 

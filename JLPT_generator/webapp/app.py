@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -22,6 +23,8 @@ def create_app() -> Flask:
     # but Flask still wants a secret key for some internals/extensions.
     app.secret_key = os.getenv("SECRET_KEY", "").strip() or "dev-insecure-secret-key"
 
+    gen_log = logging.getLogger("jlpt.generation")
+    gen_log.setLevel(logging.INFO)
+
     app.register_blueprint(web_bp)
     return app
-

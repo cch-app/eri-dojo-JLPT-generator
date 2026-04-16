@@ -17,9 +17,31 @@
   </div>
 </div>
 
-<div class="mt-4 text-lg font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">
-  {{ question.prompt }}
-</div>
+{% if is_listening %}
+  <div class="mt-4 rounded-xl border-2 border-sky-200 bg-sky-50 p-4">
+    <div class="mb-3 text-sm font-semibold text-sky-900">{{ t(ui_locale, "audio") }}</div>
+    {% if listening_story_audio_src %}
+      <audio controls preload="none" class="w-full">
+        <source src="{{ listening_story_audio_src }}" />
+      </audio>
+    {% elif listening_story_audio_fallback_tts and listening_transcript %}
+      <button
+        type="button"
+        class="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-500 active:bg-sky-700"
+        data-listening-tts="1"
+        data-tts-text="{{ listening_transcript_spoken or listening_transcript }}"
+      >
+        {{ t(ui_locale, "play_audio") }}
+      </button>
+    {% else %}
+      <div class="text-sm text-rose-700">{{ t(ui_locale, "audio_unavailable") }}</div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="mt-4 text-lg font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">
+    {{ question.prompt }}
+  </div>
+{% endif %}
 
 <form id="quiz-action-form" method="post" action="{{ url_for_locale('web.submit_answer') }}" class="mt-5 space-y-2">
   <input type="hidden" name="token" value="{{ token }}" />
@@ -83,6 +105,10 @@
       {% endif %}
     </div>
     <div class="mt-3 text-sm text-slate-700 whitespace-pre-wrap">
+      {% if is_listening and listening_transcript %}
+        <div class="mb-2 font-semibold text-sky-900">{{ t(ui_locale, "transcript") }}</div>
+        <div class="mb-3">{{ listening_transcript }}</div>
+      {% endif %}
       {{ question.explanation }}
     </div>
   </div>

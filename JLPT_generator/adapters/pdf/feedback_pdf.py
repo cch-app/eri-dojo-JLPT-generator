@@ -24,12 +24,8 @@ def _escape_html(text: str) -> str:
 def _markdown_inline_to_html(text: str) -> str:
     escaped = _escape_html(text)
     # Avoid <strong>/<b> when using a single regular TTF file (no bold font variant).
-    escaped = re.sub(
-        r"\*\*([^*]+)\*\*", r'<font color="#0c4a6e">\1</font>', escaped
-    )
-    escaped = re.sub(
-        r"__([^_]+)__", r'<font color="#0c4a6e">\1</font>', escaped
-    )
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r'<font color="#0c4a6e">\1</font>', escaped)
+    escaped = re.sub(r"__([^_]+)__", r'<font color="#0c4a6e">\1</font>', escaped)
     escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
     return escaped
 
@@ -128,12 +124,18 @@ def _markdown_to_basic_html(markdown: str) -> str:
             continue
 
         # Table separator line: triggers table mode if previous line was header
-        if re.match(r"^\s*\|?[\s:\-|\+]+\|?\s*$", line) and para_buf and "|" in para_buf[-1]:
+        if (
+            re.match(r"^\s*\|?[\s:\-|\+]+\|?\s*$", line)
+            and para_buf
+            and "|" in para_buf[-1]
+        ):
             header_line = para_buf.pop()
             flush_para()
             close_lists()
             in_table = True
-            table_header = [p.strip() for p in header_line.strip().strip("|").split("|")]
+            table_header = [
+                p.strip() for p in header_line.strip().strip("|").split("|")
+            ]
             continue
 
         if in_table and "|" in line:
@@ -187,7 +189,9 @@ def _markdown_to_basic_html(markdown: str) -> str:
             if m_h:
                 level = len(m_h.group(1))
                 tag = f"h{min(level, 6)}"
-                html_parts.append(f"<{tag}>{_markdown_inline_to_html(m_h.group(2))}</{tag}>")
+                html_parts.append(
+                    f"<{tag}>{_markdown_inline_to_html(m_h.group(2))}</{tag}>"
+                )
                 continue
 
         para_buf.append(stripped)

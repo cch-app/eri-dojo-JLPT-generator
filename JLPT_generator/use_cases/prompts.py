@@ -22,15 +22,31 @@ def question_generation_prompt(
     category: str,
     explanation_locale: str = "English",
 ) -> str:
+    is_listening = section == QuestionSection.listening
+    listening_schema_metadata: dict[str, object] = {
+        "listening_transcript": "string (same as prompt; for rendering post-answer only)",
+        "story_transcript": "string (context/story only; no explicit question)",
+        "question_transcript": "string (the explicit question prompt only)",
+        "tags": ["optional", "strings"],
+        "difficulty": "optional",
+    }
     schema = {
         "section": section.value,
         "level": level.value,
         "category": category,
-        "prompt": "string (the question stem, in Japanese)",
+        "prompt": (
+            "string (the listening transcript in Japanese)"
+            if is_listening
+            else "string (the question stem, in Japanese)"
+        ),
         "choices": ["string", "string", "string", "string"],
         "answer_index": 0,
         "explanation": "string (detailed; see rules below)",
-        "metadata": {"tags": ["optional", "strings"], "difficulty": "optional"},
+        "metadata": (
+            listening_schema_metadata
+            if is_listening
+            else {"tags": ["optional", "strings"], "difficulty": "optional"}
+        ),
     }
 
     return (
@@ -41,7 +57,23 @@ def question_generation_prompt(
         f"Level: {level.value}\n"
         f"Category: {category}\n\n"
         f"The question stem and all four choices must be in Japanese (authentic JLPT-style).\n"
-        f"The 'explanation' must be written entirely in {explanation_locale} "
+        + (
+            "For listening questions, 'prompt' must be the SPOKEN transcript in Japanese.\n"
+            "Mandatory listening format:\n"
+            "- Part 1 (Context/Story): a short natural situation, dialogue, or statement.\n"
+            "- Part 2 (Question Prompt): an explicit question the learner must answer.\n"
+            "  Prefer starting the question line with '問題：' (or '質問：').\n"
+            "Hard rules for listening:\n"
+            "- NO blanks/穴埋め (no '____', no '＿', no '（　）').\n"
+            "- The audio must be answerable by listening alone (include context + the question).\n"
+            "- Natural spoken Japanese only (avoid grammar worksheet tone).\n"
+            "- Provide BOTH in metadata too: story_transcript (context only) and question_transcript (question only).\n"
+            "- metadata.listening_transcript must match prompt.\n"
+            "Do not include UI instructions like 'Read the transcript' or 'Choose A/B/C/D'.\n"
+            if is_listening
+            else ""
+        )
+        + f"The 'explanation' must be written entirely in {explanation_locale} "
         "(not Japanese), so the learner can understand in their UI language.\n\n"
         f"{_EXPLANATION_RULES}\n"
         "Return ONLY valid JSON (no markdown, no extra text). The JSON must match this shape:\n"
@@ -70,15 +102,30 @@ def _single_question_shape_example(
     category: str,
     explanation_locale: str,
 ) -> dict:
+    is_listening = section == QuestionSection.listening
     return {
         "section": section.value,
         "level": level.value,
         "category": category,
-        "prompt": "string (stem in Japanese)",
+        "prompt": (
+            "string (listening transcript in Japanese)"
+            if is_listening
+            else "string (stem in Japanese)"
+        ),
         "choices": ["string", "string", "string", "string"],
         "answer_index": 0,
         "explanation": f"string (detailed explanation in {explanation_locale})",
-        "metadata": {"tags": ["optional"], "difficulty": "optional"},
+        "metadata": (
+            {
+                "listening_transcript": "string (same as prompt)",
+                "story_transcript": "string (context/story only; no explicit question)",
+                "question_transcript": "string (explicit question prompt only)",
+                "tags": ["optional"],
+                "difficulty": "optional",
+            }
+            if is_listening
+            else {"tags": ["optional"], "difficulty": "optional"}
+        ),
     }
 
 
@@ -105,7 +152,18 @@ def questions_batch_generation_prompt(
         f"Level: {level.value}\n"
         f"Category: {category}\n\n"
         "Each item: question stem and all four choices must be in Japanese.\n"
-        f"Each item's 'explanation' must be written entirely in {explanation_locale}.\n\n"
+        + (
+            "For listening section, each 'prompt' is the SPOKEN transcript in Japanese; "
+            "it will be rendered as audio.\n"
+            "Mandatory listening format per prompt:\n"
+            "- Part 1 (Context/Story): natural situation/dialogue.\n"
+            "- Part 2 (Question Prompt): explicit question line, prefer '問題：...'.\n"
+            "Hard rules: NO blanks/穴埋め ('____', '＿', '（　）'), and it must be answerable by audio alone.\n"
+            "Also include in metadata: story_transcript + question_transcript, and listening_transcript == prompt.\n"
+            if section == QuestionSection.listening
+            else ""
+        )
+        + f"Each item's 'explanation' must be written entirely in {explanation_locale}.\n\n"
         f"{_EXPLANATION_RULES}\n"
         "Return ONLY valid JSON (no markdown, no extra text). Top-level object must have key "
         f"'questions' whose value is an array of exactly {num_questions} objects.\n"
@@ -143,7 +201,23 @@ def questions_stream_delimited_prompt(
         f"Level: {level.value}\n"
         f"Category: {category}\n\n"
         "Each item: question stem and all four choices must be in Japanese.\n"
-        f"Each item's 'explanation' must be written entirely in {explanation_locale}.\n\n"
+        + (
+            "For listening section, each 'prompt' is the SPOKEN transcript in Japanese; "
+            "it will be rendered as audio.\n"
+            "Mandatory listening format per prompt:\n"
+            "- Part 1 (Context/Story): natural situation/dialogue.\n"
+            "- Part 2 (Question Prompt): explicit question line, prefer '問題：...'.\n"
+            "Hard rules: NO blanks/穴埋め ('____', '＿', '（　）'), and it must be answerable by audio alone.\n"
+            "Also include in metadata: story_transcript + question_transcript, and listening_transcript == prompt.\n"
+            "Common JLPT-like patterns to emulate (original content only):\n"
+            "- Speaker concern: 'どうしよう' → 問題：何を困っていますか。\n"
+            "- Next action: 'じゃあ…' → 問題：二人はこの後どうしますか。\n"
+            "- Reason: '～んです' → 問題：なぜ～ましたか。\n"
+            "- Choice/decision: 'じゃあ、これにします' → 問題：何を選びましたか。\n"
+            if section == QuestionSection.listening
+            else ""
+        )
+        + f"Each item's 'explanation' must be written entirely in {explanation_locale}.\n\n"
         f"{_EXPLANATION_RULES}\n"
         "OUTPUT FORMAT (critical):\n"
         f"- Emit one question at a time using exactly these line-oriented markers:\n"
@@ -180,7 +254,7 @@ def questions_stream_topoff_prompt(
     )
     inner_example = json.dumps(one, ensure_ascii=False)
     snippets = "\n".join(f"- {s[:200]}" for s in avoid_prompt_snippets[:12])
-    return (
+    base = (
         "You are generating additional ORIGINAL JLPT-style practice questions "
         f"to complete a session ({remaining} more needed).\n"
         "Do NOT copy or closely paraphrase any real JLPT or copyrighted prep questions.\n"
@@ -189,12 +263,26 @@ def questions_stream_topoff_prompt(
         f"Section: {section.value}\n"
         f"Level: {level.value}\n"
         f"Category: {category}\n\n"
-        f"Explanations must be entirely in {explanation_locale}.\n"
-        f"{_EXPLANATION_RULES}\n"
-        "OUTPUT FORMAT:\n"
-        f"Use {QUESTION_START} ... JSON object ... {QUESTION_END} for each question.\n"
-        f"Emit exactly {remaining} complete blocks if possible.\n"
-        f"JSON shape example:\n{inner_example}\n"
+    )
+    listening_rules = (
+        "Listening-specific rules:\n"
+        "- Each prompt must include BOTH context/story and an explicit question line.\n"
+        "- Prefer formatting the question line as '問題：...'.\n"
+        "- NO blanks/穴埋め ('____', '＿', '（　）').\n"
+        "- Include metadata.story_transcript + metadata.question_transcript.\n"
+        "- metadata.listening_transcript must match prompt.\n\n"
+        if section == QuestionSection.listening
+        else ""
+    )
+    return (
+        base
+        + listening_rules
+        + f"Explanations must be entirely in {explanation_locale}.\n"
+        + f"{_EXPLANATION_RULES}\n"
+        + "OUTPUT FORMAT:\n"
+        + f"Use {QUESTION_START} ... JSON object ... {QUESTION_END} for each question.\n"
+        + f"Emit exactly {remaining} complete blocks if possible.\n"
+        + f"JSON shape example:\n{inner_example}\n"
     )
 
 

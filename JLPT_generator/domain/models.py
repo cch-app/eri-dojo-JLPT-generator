@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 class QuestionSection(StrEnum):
     reading = "reading"
-    # listening = "listening"
+    listening = "listening"
 
 
 class JLPTLevel(StrEnum):
@@ -51,7 +51,7 @@ class SessionRun(BaseModel):
     section: QuestionSection
     level: JLPTLevel
     category: str
-    num_questions: int = Field(ge=1, le=20, default=10)
+    num_questions: int = Field(ge=1, le=10, default=5)
 
     questions: list[Question] = Field(default_factory=list)
     attempts: list[Attempt] = Field(default_factory=list)

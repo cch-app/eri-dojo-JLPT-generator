@@ -41,6 +41,10 @@ from JLPT_generator.i18n import (
 )
 from JLPT_generator.monitoring.generation_log import log_generation
 from JLPT_generator.use_cases.generate_question import _question_from_payload
+from JLPT_generator.use_cases.listening_question_generation import (
+    resolve_listening_playback_transcript,
+    resolve_listening_transcript,
+)
 from JLPT_generator.use_cases.prompts import final_analysis_prompt
 from JLPT_generator.use_cases.stream_questions_generation import (
     iter_question_stream_events,
@@ -50,7 +54,7 @@ from JLPT_generator.webapp.token_codec import TokenCodec, TokenDecodeError
 
 bp = Blueprint("web", __name__)
 
-MAX_NUM_QUESTIONS = 20
+MAX_NUM_QUESTIONS = 10
 UI_LOCALE_COOKIE = "ui_locale"
 
 READING_CATEGORIES = [
@@ -64,7 +68,6 @@ LISTENING_CATEGORIES = [
     "point_comprehension",
     "listening_comprehension",
 ]
-
 
 def _provider() -> OllamaSdkProvider:
     return OllamaSdkProvider.from_env()
@@ -155,26 +158,87 @@ def _quiz_template_kwargs(
     q = _current_question(payload)
     idx = int(payload.get("current_index") or 0)
     questions = payload.get("questions")
-    
+
     if not isinstance(questions, list):
         questions = []
     num = len(questions)
     revealed = bool(payload.get("revealed"))
     selected_index = payload.get("selected_index")
-    
+
     try:
         selected_int = int(selected_index) if selected_index is not None else None
     except ValueError:
         selected_int = None
-    
+
     answer_index = int(q.get("answer_index") or 0)
+    is_listening = str(payload.get("section") or "") == QuestionSection.listening.value
+    qmeta = q.get("metadata")
+    if not isinstance(qmeta, dict):
+        qmeta = {}
+    listening_story_audio_base64 = (
+        str(
+            qmeta.get("listening_story_audio_base64")
+            or qmeta.get("listening_audio_base64")
+            or ""
+        ).strip()
+        if is_listening
+        else ""
+    )
+    listening_story_audio_mime = (
+        str(
+            qmeta.get("listening_story_audio_mime_type")
+            or qmeta.get("listening_audio_mime_type")
+            or "audio/wav"
+        ).strip()
+        if is_listening
+        else "audio/wav"
+    )
+    listening_question_audio_base64 = (
+        str(qmeta.get("listening_question_audio_base64") or "").strip()
+        if is_listening
+        else ""
+    )
+    listening_question_audio_mime = (
+        str(qmeta.get("listening_question_audio_mime_type") or "audio/wav").strip()
+        if is_listening
+        else "audio/wav"
+    )
+    listening_transcript = resolve_listening_transcript(q) if is_listening else ""
+    listening_playback_transcript = (
+        resolve_listening_playback_transcript(q) if is_listening else ""
+    )
+    listening_transcript_spoken = (
+        str(qmeta.get("listening_transcript_spoken") or "").strip()
+        if is_listening
+        else ""
+    ) or listening_transcript
+    listening_story_audio_src = (
+        f"data:{listening_story_audio_mime};base64,{listening_story_audio_base64}"
+        if listening_story_audio_base64
+        else ""
+    )
+    listening_question_audio_src = (
+        f"data:{listening_question_audio_mime};base64,{listening_question_audio_base64}"
+        if listening_question_audio_base64
+        else ""
+    )
+    listening_story_audio_fallback_tts = bool(
+        qmeta.get("listening_story_audio_fallback_tts")
+        if is_listening
+        else False
+    )
+    listening_question_audio_fallback_tts = bool(
+        qmeta.get("listening_question_audio_fallback_tts")
+        if is_listening
+        else False
+    )
     stream_complete = bool(payload.get("stream_complete", True))
     stream_waiting_more = (
         revealed and num > 0 and idx >= num - 1 and not stream_complete
     )
     stream_total_raw = payload.get("stream_total_requested")
     stream_total: Optional[int] = None
-    
+
     if stream_total_raw is not None:
         try:
             stream_total = int(stream_total_raw)
@@ -189,7 +253,7 @@ def _quiz_template_kwargs(
     else:
         # Still streaming: only the configured last index may show Finish.
         is_last = num >= stream_total and idx >= stream_total - 1
-    
+
     kwargs: dict[str, Any] = {
         "t": translate,
         "token": token,
@@ -218,6 +282,14 @@ def _quiz_template_kwargs(
         "error": error,
         "is_last": is_last and not stream_waiting_more,
         "stream_waiting_more": stream_waiting_more,
+        "is_listening": is_listening,
+        "listening_story_audio_src": listening_story_audio_src,
+        "listening_question_audio_src": listening_question_audio_src,
+        "listening_transcript": listening_transcript,
+        "listening_transcript_spoken": listening_transcript_spoken,
+        "listening_playback_transcript": listening_playback_transcript,
+        "listening_story_audio_fallback_tts": listening_story_audio_fallback_tts,
+        "listening_question_audio_fallback_tts": listening_question_audio_fallback_tts,
     }
     if "stream_total_requested" in payload:
         kwargs["stream_total_requested"] = int(payload["stream_total_requested"])
@@ -303,11 +375,20 @@ def start() -> Response:
     ui_locale = _resolve_ui_locale()
 
     section = (request.form.get("section") or QuestionSection.reading.value).strip()
+    if section not in {s.value for s in QuestionSection}:
+        section = QuestionSection.reading.value
     level = (request.form.get("level") or JLPTLevel.n5.value).strip()
-    category = (request.form.get("category") or READING_CATEGORIES[0]).strip()
+    category_pool = (
+        LISTENING_CATEGORIES
+        if section == QuestionSection.listening.value
+        else READING_CATEGORIES
+    )
+    category = (request.form.get("category") or category_pool[0]).strip()
+    if category not in category_pool:
+        category = category_pool[0]
     num_questions = _safe_int(
-        request.form.get("num_questions") or "10",
-        default=10,
+        request.form.get("num_questions") or "5",
+        default=5,
         min_v=1,
         max_v=MAX_NUM_QUESTIONS,
     )
@@ -465,7 +546,7 @@ def stream_questions() -> Response:
     section = str(launch.get("section") or "")
     level = str(launch.get("level") or "")
     category = str(launch.get("category") or "")
-    num_questions = int(launch.get("num_questions") or 10)
+    num_questions = int(launch.get("num_questions") or 5)
     expl_name = explanation_locale_name(ui_locale)
     request_id = str(uuid.uuid4())
     log_generation(
@@ -550,7 +631,7 @@ def enter_session() -> str | Response:
                     "section": str(payload.get("section") or ""),
                     "level": str(payload.get("level") or ""),
                     "category": str(payload.get("category") or ""),
-                    "num_questions": int(payload.get("num_questions") or 10),
+                    "num_questions": int(payload.get("num_questions") or 5),
                 },
             )
         )
@@ -774,7 +855,7 @@ def stream_analysis() -> Response:
                 section=QuestionSection(str(payload.get("section") or "")),
                 level=JLPTLevel(str(payload.get("level") or "")),
                 category=str(payload.get("category") or ""),
-                num_questions=int(payload.get("num_questions") or 10),
+                num_questions=int(payload.get("num_questions") or 5),
                 questions=[
                     Question.model_validate(q) for q in (payload.get("questions") or [])
                 ],

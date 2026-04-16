@@ -21,10 +21,14 @@ class TokenCodec:
     def from_secret(*, secret_key: str, salt: str = "jlpt-session-v1") -> "TokenCodec":
         if not secret_key.strip():
             raise ValueError("secret_key must be non-empty")
-        return TokenCodec(serializer=URLSafeSerializer(secret_key=secret_key, salt=salt))
+        return TokenCodec(
+            serializer=URLSafeSerializer(secret_key=secret_key, salt=salt)
+        )
 
     def encode(self, payload: dict[str, Any]) -> str:
-        raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        raw = json.dumps(
+            payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        )
         compressed = zlib.compress(raw.encode("utf-8"), level=9)
         b64 = base64.urlsafe_b64encode(compressed).decode("ascii")
         return self.serializer.dumps(b64)
@@ -43,4 +47,3 @@ class TokenCodec:
         if not isinstance(obj, dict):
             raise TokenDecodeError("Invalid session token payload.")
         return obj  # type: ignore[return-value]
-

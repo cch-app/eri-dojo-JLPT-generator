@@ -57,6 +57,7 @@
         <div>
           <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "section") }}</label>
           <select
+            id="section-select"
             name="section"
             class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
           >
@@ -66,20 +67,28 @@
               </option>
             {% endfor %}
           </select>
-          <div class="mt-2 text-xs text-slate-500">
-            {{ t(ui_locale, "section_listening") }}: {{ t(ui_locale, "upcoming_features") }}.
-          </div>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "category") }}</label>
           <select
+            id="category-select"
             name="category"
             class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
           >
-            {% set cat = (form.get("category") if form else (reading_categories[0] if reading_categories else "")) %}
+            {% set section_value = (form.get("section") if form else sections[0]) %}
+            {% if section_value not in sections %}
+              {% set section_value = sections[0] %}
+            {% endif %}
+            {% set fallback_categories = listening_categories if section_value == 'listening' else reading_categories %}
+            {% set cat = (form.get("category") if form else (fallback_categories[0] if fallback_categories else "")) %}
             {% for c in reading_categories %}
-              <option value="{{ c }}" {% if cat == c %}selected{% endif %}>
+              <option data-section="reading" value="{{ c }}" {% if section_value == 'reading' and cat == c %}selected{% endif %}>
+                {{ label_for_category(ui_locale, c) if label_for_category else c }}
+              </option>
+            {% endfor %}
+            {% for c in listening_categories %}
+              <option data-section="listening" value="{{ c }}" {% if section_value == 'listening' and cat == c %}selected{% endif %}>
                 {{ label_for_category(ui_locale, c) if label_for_category else c }}
               </option>
             {% endfor %}
@@ -87,13 +96,13 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "num_questions") }} (max 20)</label>
+          <label class="block text-sm font-medium text-slate-700">{{ t(ui_locale, "num_questions") }} ({{ t(ui_locale, "max_num_questions") }})</label>
           <input
             type="number"
             name="num_questions"
             min="1"
-            max="20"
-            value="{{ form.get('num_questions') if form else 10 }}"
+            max="10"
+            value="{{ form.get('num_questions') if form else 5 }}"
             class="mt-2 w-full rounded-xl border-2 border-sky-300 bg-white p-2 text-slate-800"
           />
         </div>
@@ -110,6 +119,28 @@
     <script>
       (function () {
         const sel = document.getElementById("ui-locale-select");
+        const sectionSel = document.getElementById("section-select");
+        const categorySel = document.getElementById("category-select");
+        function syncCategories() {
+          if (!sectionSel || !categorySel) return;
+          const section = sectionSel.value;
+          const options = Array.from(categorySel.querySelectorAll("option"));
+          let firstVisible = null;
+          let selectedVisible = false;
+          options.forEach((opt) => {
+            const visible = opt.dataset.section === section;
+            opt.hidden = !visible;
+            if (visible && !firstVisible) firstVisible = opt;
+            if (visible && opt.selected) selectedVisible = true;
+          });
+          if (!selectedVisible && firstVisible) {
+            firstVisible.selected = true;
+          }
+        }
+        if (sectionSel) {
+          sectionSel.addEventListener("change", syncCategories);
+          syncCategories();
+        }
         if (!sel) return;
         sel.addEventListener("change", function (ev) {
           const v = ev && ev.target ? ev.target.value : "";

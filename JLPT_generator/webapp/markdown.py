@@ -15,7 +15,9 @@ def markdown_to_safe_html(markdown: str) -> str:
     - Supports simple inline: **bold**, __bold__, `code`.
     """
 
-    md = preprocess_feedback_markdown((markdown or "").replace("\r\n", "\n")).strip("\n")
+    md = preprocess_feedback_markdown((markdown or "").replace("\r\n", "\n")).strip(
+        "\n"
+    )
     if not md.strip():
         return ""
 
@@ -142,7 +144,9 @@ def markdown_to_safe_html(markdown: str) -> str:
                 flush_para()
                 close_lists()
                 in_table = True
-                table_header = [p.strip() for p in header_line.strip().strip("|").split("|")]
+                table_header = [
+                    p.strip() for p in header_line.strip().strip("|").split("|")
+                ]
                 table_rows = []
                 continue
 
@@ -193,8 +197,9 @@ def markdown_to_safe_html(markdown: str) -> str:
     flush_table()
     if in_code:
         out.append(
-            "<pre><code>" + html.escape("\n".join(code_buf), quote=True) + "</code></pre>"
+            "<pre><code>"
+            + html.escape("\n".join(code_buf), quote=True)
+            + "</code></pre>"
         )
 
     return "\n".join(out)
-

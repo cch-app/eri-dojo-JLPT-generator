@@ -16,6 +16,22 @@ def _q(i: int) -> dict:
     }
 
 
+def _listening_q(i: int) -> dict:
+    return {
+        "id": str(i),
+        "prompt": f"Transcript{i}",
+        "choices": ["a", "b", "c", "d"],
+        "answer_index": 0,
+        "metadata": {
+            "listening_transcript": f"Transcript{i}",
+            "listening_story_audio_base64": "QUJD",
+            "listening_story_audio_mime_type": "audio/wav",
+            "listening_question_audio_base64": "REVG",
+            "listening_question_audio_mime_type": "audio/wav",
+        },
+    }
+
+
 def test_streaming_not_last_when_buffer_smaller_than_requested() -> None:
     """On last buffered question but more requested: show Next, not Finish."""
     n_buf = 3
@@ -109,3 +125,21 @@ def test_stream_waiting_more_never_shows_finish(revealed: bool) -> None:
     else:
         assert kw["stream_waiting_more"] is False
         assert kw["is_last"] is False
+
+
+def test_listening_kwargs_include_audio_and_transcript() -> None:
+    payload = {
+        "ui_locale": "en",
+        "section": "listening",
+        "level": "n5",
+        "category": "task_based",
+        "current_index": 0,
+        "revealed": True,
+        "selected_index": 0,
+        "questions": [_listening_q(0)],
+    }
+    kw = _quiz_template_kwargs(payload, token="t", error=None)
+    assert kw["is_listening"] is True
+    assert kw["listening_story_audio_src"].startswith("data:audio/wav;base64,")
+    assert kw["listening_question_audio_src"].startswith("data:audio/wav;base64,")
+    assert kw["listening_transcript"] == "Transcript0"

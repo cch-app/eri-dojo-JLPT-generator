@@ -3,17 +3,22 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Iterator
-from typing import Any, Protocol
+from typing import Protocol
 
 from JLPT_generator.adapters.ai.base import AiProviderError
 from JLPT_generator.domain import JLPTLevel, QuestionSection
 from JLPT_generator.monitoring.generation_log import log_generation
 from JLPT_generator.parsers.delimited_questions import DelimitedQuestionStreamParser
-from JLPT_generator.use_cases.prompts import (
-    questions_stream_delimited_prompt,
-    questions_stream_topoff_prompt,
+from JLPT_generator.use_cases.listening_question_generation import (
+    SupportsListeningGeneration,
+    attach_listening_audio,
+    build_listening_stream_prompt,
+    validate_listening_question,
 )
-
+from JLPT_generator.use_cases.reading_question_generation import (
+    build_reading_stream_prompt,
+)
+from JLPT_generator.use_cases.prompts import questions_stream_topoff_prompt
 
 class SupportsTextGeneration(Protocol):
     def stream_text(self, *, prompt: str) -> Iterator[str]: ...
@@ -81,7 +86,7 @@ def iter_question_stream_events(
         num_questions=num_questions,
     )
 
-    prompt = questions_stream_delimited_prompt(
+    prompt = _build_stream_prompt(
         section=section,
         level=level,
         category=category,
@@ -92,18 +97,31 @@ def iter_question_stream_events(
         section=section, level=level, category=category
     )
     questions: list[dict[str, Any]] = []
-    chunk_index = 0
     stream_error: str | None = None
 
     yield {"type": "status", "status": "started", "requested": num_questions}
 
+    chunk_index = 0
     try:
         for delta in _stream_with_retries(provider, prompt=prompt):
             chunk_index += 1
             if chunk_index % 24 == 0:
                 yield {"type": "status", "status": "streaming"}
             for q in parser.feed(delta):
-                questions.append(q)
+                if section == QuestionSection.listening:
+                    ok, reason = validate_listening_question(q)
+                    if not ok:
+                        log_generation(
+                            "listening_question_rejected",
+                            request_id=rid,
+                            detail=reason,
+                            prompt_snippet=str(q.get("prompt") or "")[:240],
+                        )
+                        continue
+                question = _prepare_question_for_section(
+                    provider=provider, section=section, question=q
+                )
+                questions.append(question)
                 if t_first is None:
                     t_first = time.perf_counter()
                     log_generation(
@@ -114,14 +132,14 @@ def iter_question_stream_events(
                     yield {
                         "type": "question",
                         "index": len(questions) - 1,
-                        "question": q,
+                        "question": question,
                         "ttfq_ms": round((t_first - t0) * 1000, 2),
                     }
                 else:
                     yield {
                         "type": "question",
                         "index": len(questions) - 1,
-                        "question": q,
+                        "question": question,
                     }
                 if len(questions) >= num_questions:
                     break
@@ -158,8 +176,39 @@ def iter_question_stream_events(
         try:
             text = provider.complete_text(prompt=topoff)
             for q in parser.feed(text):
-                questions.append(q)
-                yield {"type": "question", "index": len(questions) - 1, "question": q}
+                if section == QuestionSection.listening:
+                    ok, reason = validate_listening_question(q)
+                    if not ok:
+                        log_generation(
+                            "listening_question_rejected",
+                            request_id=rid,
+                            detail=reason,
+                            prompt_snippet=str(q.get("prompt") or "")[:240],
+                        )
+                        continue
+                question = _prepare_question_for_section(
+                    provider=provider, section=section, question=q
+                )
+                questions.append(question)
+                if t_first is None:
+                    t_first = time.perf_counter()
+                    log_generation(
+                        "first_question_ready",
+                        request_id=rid,
+                        ttfq_ms=round((t_first - t0) * 1000, 2),
+                    )
+                    yield {
+                        "type": "question",
+                        "index": len(questions) - 1,
+                        "question": question,
+                        "ttfq_ms": round((t_first - t0) * 1000, 2),
+                    }
+                else:
+                    yield {
+                        "type": "question",
+                        "index": len(questions) - 1,
+                        "question": question,
+                    }
                 if len(questions) >= num_questions:
                     break
         except Exception as e:  # noqa: BLE001
@@ -201,3 +250,50 @@ def iter_question_stream_events(
     if stream_error and len(questions) < num_questions:
         done_event["warning"] = stream_error
     yield done_event
+
+
+def _build_stream_prompt(
+    *,
+    section: QuestionSection,
+    level: JLPTLevel,
+    category: str,
+    num_questions: int,
+    explanation_locale: str,
+) -> str:
+    match section:
+        case QuestionSection.listening:
+            return build_listening_stream_prompt(
+                section=section,
+                level=level,
+                category=category,
+                num_questions=num_questions,
+                explanation_locale=explanation_locale,
+            )
+        case _:
+            return build_reading_stream_prompt(
+                section=section,
+                level=level,
+                category=category,
+                num_questions=num_questions,
+                explanation_locale=explanation_locale,
+            )
+
+
+def _prepare_question_for_section(
+    *,
+    provider: SupportsTextGeneration,
+    section: QuestionSection,
+    question: dict[str, Any],
+) -> dict[str, Any]:
+    match section:
+        case QuestionSection.listening:
+            if not hasattr(provider, "generate_listening_audio_base64"):
+                raise AiProviderError(
+                    "Listening section requires audio generation support."
+                )
+            return attach_listening_audio(
+                provider=provider,  # type: ignore[arg-type]
+                question=question,
+            )
+        case _:
+            return question

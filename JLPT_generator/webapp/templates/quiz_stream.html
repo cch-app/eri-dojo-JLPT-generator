@@ -38,8 +38,6 @@
       const streamUrl = {{ stream_questions_url | tojson }};
       const mergeUrl = {{ quiz_stream_merge_url | tojson }};
       const finalizeUrl = {{ quiz_stream_finalize_url | tojson }};
-      const setupPageUrl = {{ url_for_locale("web.setup_page") | tojson }};
-
       const overlay = document.getElementById("loading-overlay");
       const mount = document.getElementById("quiz-mount");
       const app = document.getElementById("quiz-stream-app");
@@ -48,6 +46,7 @@
       let mergeChain = Promise.resolve();
       let displayedIndex = null;
       let formNavigationPending = false;
+      let streamHadTerminalError = false;
 
       function syncDisplayedIndexFromDom() {
         const root = mount.querySelector("#quiz-mount-root");
@@ -110,6 +109,19 @@
         return data;
       }
 
+      function renderStreamError(message, withRetry) {
+        streamHadTerminalError = true;
+        overlay.classList.add("hidden");
+        const retryHtml = withRetry
+          ? '<button type="button" data-stream-retry="1" class="mt-4 w-full rounded-xl bg-sky-600 p-3 font-semibold text-white shadow-md shadow-sky-400/45 hover:bg-sky-500 active:bg-sky-700">Retry generation</button>'
+          : "";
+        mount.innerHTML =
+          '<div class="rounded-xl border-2 border-rose-200 bg-rose-50 p-4 text-rose-700">' +
+          String(message || "Failed to generate questions.") +
+          "</div>" +
+          retryHtml;
+      }
+
       function enqueueMerge(fn) {
         mergeChain = mergeChain.then(fn).catch(function (e) {
           console.error(e);
@@ -123,7 +135,7 @@
             : { token: sessionToken, index: index, question: question };
         const data = await postJson(mergeUrl, payload);
         if (!data.ok) {
-          throw new Error(data.error || "merge failed");
+          throw new Error(data.error || "Failed to merge streamed question.");
         }
         sessionToken = data.token;
         if (data.duplicate) {
@@ -157,20 +169,21 @@
       async function finalizeStream() {
         if (!sessionToken) return;
         const data = await postJson(finalizeUrl, { token: sessionToken });
-        if (data.ok) {
-          sessionToken = data.token;
-          const hasMountedQuiz = !!mount.querySelector("#quiz-action-form");
-          if (hasMountedQuiz) {
-            const tokenInput = mount.querySelector('input[name="token"]');
-            if (tokenInput) {
-              tokenInput.value = sessionToken;
-            }
-            patchChromeFromHtml(data.html);
-          } else {
-            mountHtml(data.html);
-          }
-          overlay.classList.add("hidden");
+        if (!data.ok) {
+          throw new Error(data.error || "Failed to finalize generated questions.");
         }
+        sessionToken = data.token;
+        const hasMountedQuiz = !!mount.querySelector("#quiz-action-form");
+        if (hasMountedQuiz) {
+          const tokenInput = mount.querySelector('input[name="token"]');
+          if (tokenInput) {
+            tokenInput.value = sessionToken;
+          }
+          patchChromeFromHtml(data.html);
+        } else {
+          mountHtml(data.html);
+        }
+        overlay.classList.add("hidden");
       }
 
       const src = new EventSource(streamUrl + "?token=" + encodeURIComponent(launchToken));
@@ -180,15 +193,20 @@
           const msg = JSON.parse(ev.data);
           if (msg.type === "question") {
             enqueueMerge(function () {
-              return mergeQuestion(msg.index, msg.question);
+              return mergeQuestion(msg.index, msg.question).catch(function (err) {
+                renderStreamError(err instanceof Error ? err.message : "Failed to process streamed question.", true);
+              });
             });
           } else if (msg.type === "done") {
             src.close();
-            enqueueMerge(finalizeStream);
+            enqueueMerge(function () {
+              return finalizeStream().catch(function (err) {
+                renderStreamError(err instanceof Error ? err.message : "Failed to finalize generated questions.", true);
+              });
+            });
           } else if (msg.type === "error") {
             src.close();
-            overlay.classList.add("hidden");
-            window.location.href = setupPageUrl;
+            renderStreamError(msg.message || "Question generation failed.", true);
           }
         } catch (e) {
           // ignore
@@ -199,7 +217,113 @@
         try {
           src.close();
         } catch (e) {}
+        if (!streamHadTerminalError && !sessionToken) {
+          renderStreamError("Connection lost while generating questions. Please retry.", true);
+        }
       };
+
+      app.addEventListener("click", function (ev) {
+        const target = ev.target;
+        if (!(target instanceof HTMLElement)) return;
+        const ttsBtn = target.closest('[data-listening-tts="1"]');
+        if (ttsBtn instanceof HTMLElement) {
+          const raw = String(ttsBtn.getAttribute("data-tts-text") || "").trim();
+          if (!raw || !("speechSynthesis" in window)) {
+            return;
+          }
+          try {
+            const SPEAKER_LINE_RE = /^\s*([^\s：:]{1,8})\s*[：:]\s*(.*)\s*$/;
+            function parseTurns(text) {
+              const lines = String(text || "")
+                .split(/\r?\n/)
+                .map((s) => String(s).trim())
+                .filter((s) => s);
+              const turns = [];
+              for (const ln of lines) {
+                const m = ln.match(SPEAKER_LINE_RE);
+                if (m) {
+                  const label = String(m[1] || "").trim();
+                  const body = String(m[2] || "").trim();
+                  if (label === "問題" || label === "質問") {
+                    turns.push({ speaker: null, text: (label + "。" + body).replace(/。+$/, "。") });
+                  } else {
+                    turns.push({ speaker: label || null, text: body });
+                  }
+                } else {
+                  turns.push({ speaker: null, text: ln });
+                }
+              }
+              return turns.filter((t) => t.text && String(t.text).trim());
+            }
+
+            function pickVoices() {
+              const vs = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+              const ja = (vs || []).filter((v) => String(v.lang || "").toLowerCase().startsWith("ja"));
+              const uniq = [];
+              const seen = new Set();
+              for (const v of ja) {
+                const k = String(v.name || "") + "|" + String(v.lang || "");
+                if (!seen.has(k)) {
+                  seen.add(k);
+                  uniq.push(v);
+                }
+              }
+              return uniq;
+            }
+
+            const turns = parseTurns(raw);
+            // Keep playback tied to user click and avoid overlapping speech.
+            window.speechSynthesis.cancel();
+
+            const voices = pickVoices();
+            const speakerToVoice = new Map();
+            let voiceCursor = 0;
+            function voiceForSpeaker(label) {
+              if (!label || !voices.length) return null;
+              if (speakerToVoice.has(label)) return speakerToVoice.get(label);
+              const v = voices[voiceCursor % voices.length] || null;
+              voiceCursor += 1;
+              speakerToVoice.set(label, v);
+              return v;
+            }
+
+            function speakTurn(i) {
+              if (i >= turns.length) return;
+              const t = turns[i];
+              const utter = new SpeechSynthesisUtterance(String(t.text));
+              utter.lang = "ja-JP";
+              const v = voiceForSpeaker(t.speaker);
+              if (v) utter.voice = v;
+              utter.onend = function () {
+                // Small gap between turns helps dialogue sound more natural.
+                window.setTimeout(function () {
+                  speakTurn(i + 1);
+                }, 200);
+              };
+              window.speechSynthesis.speak(utter);
+            }
+
+            // Some browsers populate voices asynchronously.
+            if (voices.length === 0 && "onvoiceschanged" in window.speechSynthesis) {
+              const handler = function () {
+                try {
+                  window.speechSynthesis.onvoiceschanged = null;
+                } catch (e) {}
+                speakTurn(0);
+              };
+              window.speechSynthesis.onvoiceschanged = handler;
+            } else {
+              speakTurn(0);
+            }
+          } catch (e) {
+            console.error("Speech playback failed", e);
+          }
+          return;
+        }
+        const retryBtn = target.closest('[data-stream-retry="1"]');
+        if (!retryBtn) return;
+        window.location.reload();
+      });
 
       app.addEventListener("submit", async function (ev) {
         const form = ev.target;

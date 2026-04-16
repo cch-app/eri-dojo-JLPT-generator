@@ -36,6 +36,10 @@ class _FakeProvider:
     def complete_text(self, *, prompt: str) -> str:
         return self._topoff
 
+    def generate_listening_audio_base64(self, *, transcript: str) -> tuple[str, str]:
+        _ = transcript
+        return ("QUJD", "audio/wav")
+
 
 @pytest.mark.unit
 def test_iter_question_stream_emits_questions_and_done():
@@ -77,3 +81,27 @@ def test_iter_question_stream_topoff_when_short():
     )
     assert sum(1 for e in events if e.get("type") == "question") == 2
     assert events[-1]["received"] == 2
+
+
+@pytest.mark.unit
+def test_iter_question_stream_listening_attaches_audio_metadata():
+    body = _block(
+        "男：すみません、きっぷをなくしました。\n問題：男の人は何を困っていますか。",
+        0,
+    ).replace('"section": "reading"', '"section": "listening"')
+    prov = _FakeProvider(body)
+    events = list(
+        iter_question_stream_events(
+            provider=prov,
+            section=QuestionSection.listening,
+            level=JLPTLevel.n5,
+            category="task_based",
+            num_questions=1,
+            explanation_locale="English",
+            request_id="t3",
+        )
+    )
+    question_event = next(e for e in events if e.get("type") == "question")
+    metadata = question_event["question"]["metadata"]
+    assert metadata["listening_audio_base64"] == "QUJD"
+    assert metadata["listening_audio_mime_type"] == "audio/wav"

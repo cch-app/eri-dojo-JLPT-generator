@@ -1,7 +1,7 @@
 [project]
 name = "jlpt-generator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Flask app that streams original JLPT-style reading/listening questions and ends with strengths/weaknesses feedback (PDF export)."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

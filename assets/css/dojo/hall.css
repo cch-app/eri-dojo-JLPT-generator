@@ -1,0 +1,44 @@
+/* The dojo hall: page frame, top bar, language switch and the trail-map overlay. */
+.hall{position:relative;min-height:100vh;background:linear-gradient(to bottom,transparent 72%,rgba(0,0,0,.35) 100%),var(--sumi)}
+.shoji{
+  position:absolute;inset:0 0 auto;height:560px;opacity:.13;pointer-events:none;
+  background:
+    repeating-linear-gradient(90deg,var(--washi-line) 0 3px,transparent 3px 90px),
+    repeating-linear-gradient(0deg,var(--washi-line) 0 3px,transparent 3px 70px);
+  mask-image:linear-gradient(to bottom,#000 30%,transparent);
+  -webkit-mask-image:linear-gradient(to bottom,#000 30%,transparent);
+}
+.wrap{position:relative;max-width:1000px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 56px}
+
+/* top bar */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.06em;color:var(--soft)}
+.brand-seal{display:grid;place-items:center;width:28px;height:28px;background:var(--shu);color:var(--washi);font-family:var(--display);font-weight:800;font-size:16px;border-radius:3px;transform:rotate(-4deg)}
+.tb-right{display:flex;align-items:center;gap:8px}
+.icon-btn{display:grid;place-items:center;width:36px;height:32px;padding:0;border:1px solid #57402c;background:rgba(0,0,0,.25);color:var(--soft);font-size:15px}
+.icon-btn svg{width:20px;height:20px}
+.icon-btn:hover{color:var(--washi);border-color:var(--washi-line)}
+.lang-switch{display:flex;border:1px solid #57402c;background:rgba(0,0,0,.25)}
+.lang-switch button{background:none;border:0;color:var(--muted);padding:5px 12px;font-size:13px;min-width:52px}
+.lang-switch button[aria-pressed="true"]{background:var(--washi);color:var(--sumi);font-weight:700}
+.lang-switch button:not([aria-pressed="true"]):hover{color:var(--washi)}
+
+/* trail map overlay, reachable from every screen */
+.map-modal{position:fixed;inset:0;z-index:50;background:rgba(8,6,4,.78);display:grid;place-items:center;
+  padding:max(12px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:arrive .25s ease}
+.mm-card{width:min(520px,100%);max-height:100%;overflow:auto;background:var(--sumi);border:3px solid var(--washi);box-shadow:0 0 0 4px #0e0b09,0 30px 60px rgba(0,0,0,.6);padding:14px;display:grid;gap:12px}
+.mm-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.mm-head .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--shu);font-weight:700}
+.mm-head b{display:block;font-family:var(--display);font-size:22px;line-height:1.3}
+.mm-head span{font-size:13px;color:var(--soft)}
+.mm-map{background:#c9b58e;padding:5px;border:1px solid #8a6a44}
+.mm-map .trailmap{max-height:calc(100vh - 230px);max-height:calc(100svh - 230px)}
+.mm-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap}
+.mm-note{font-size:13px;color:var(--soft);margin-right:auto}
+
+/* footer with progress reset */
+.foot{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;color:#8d7c63;font-size:13px}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.confirm .danger{background:var(--shu);color:var(--washi);border:0;padding:6px 12px}
+.mini-belt{width:54px;height:14px;border-radius:2px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);flex:none}
+.mini-belt.unranked{border:1px dashed #a9977a}

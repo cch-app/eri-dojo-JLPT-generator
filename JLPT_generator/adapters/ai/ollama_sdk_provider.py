@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from typing import Iterable, Iterator, Mapping, Optional
 from urllib.parse import urlparse
 
-from ollama import Client
+import httpx
+from ollama import Client, ResponseError
 
-from .base import AiProviderError
+from .base import AiFailure, AiProviderError
 from .ollama import _parse_json_strict
 
 
@@ -71,11 +72,12 @@ class OllamaSdkProvider:
         )
 
         if not model:
-            raise AiProviderError("Missing OLLAMA_MODEL.")
+            raise AiProviderError("Missing OLLAMA_MODEL.", kind=AiFailure.config)
         if _requires_api_key_for_host(host) and not api_key:
             raise AiProviderError(
                 "OLLAMA_API_KEY is required when OLLAMA_HOST points to Ollama Cloud "
-                "(e.g. https://ollama.com). Create a key at https://ollama.com/settings/keys"
+                "(e.g. https://ollama.com). Create a key at https://ollama.com/settings/keys",
+                kind=AiFailure.config,
             )
 
         return OllamaSdkProvider(
@@ -95,19 +97,22 @@ class OllamaSdkProvider:
         ]
 
     def stream_text(self, *, prompt: str) -> Iterator[str]:
+        # The SDK only sends a streaming request once iterated, so HTTP errors
+        # (402, 401, ...) surface inside the loop rather than at chat().
         try:
             stream = self._client.chat(
                 model=self._config.model,
                 messages=self._messages(prompt),
                 stream=True,
             )
+            for part in stream:
+                chunk = _message_content_delta(part)
+                if chunk:
+                    yield chunk
+        except AiProviderError:
+            raise
         except Exception as e:  # noqa: BLE001
-            raise AiProviderError(f"Ollama request failed: {e}") from e
-
-        for part in stream:
-            chunk = _message_content_delta(part)
-            if chunk:
-                yield chunk
+            raise _provider_error("Ollama request failed", e) from e
 
     def complete_text(self, *, prompt: str) -> str:
         try:
@@ -117,7 +122,7 @@ class OllamaSdkProvider:
                 stream=False,
             )
         except Exception as e:  # noqa: BLE001
-            raise AiProviderError(f"Ollama request failed: {e}") from e
+            raise _provider_error("Ollama request failed", e) from e
         return _full_message_content(resp).strip()
 
     def parse_question_json_from_stream(self, *, deltas: Iterable[str]) -> dict:
@@ -217,8 +222,35 @@ class OllamaSdkProvider:
                 stream=False,
             )
         except Exception as e:  # noqa: BLE001
-            raise AiProviderError(f"Ollama audio generation failed: {e}") from e
+            raise _provider_error("Ollama audio generation failed", e) from e
         return _extract_generate_response_text(resp)
+
+
+_STATUS_FAILURES = {
+    401: AiFailure.auth,
+    402: AiFailure.quota,
+    403: AiFailure.auth,
+    404: AiFailure.model_missing,
+    429: AiFailure.rate_limited,
+}
+
+
+def _classify(e: Exception) -> tuple[AiFailure, int | None]:
+    if isinstance(e, ResponseError):
+        status = e.status_code if e.status_code and e.status_code > 0 else None
+        if status in _STATUS_FAILURES:
+            return _STATUS_FAILURES[status], status
+        if status is not None and status >= 500:
+            return AiFailure.unavailable, status
+        return AiFailure.unknown, status
+    if isinstance(e, (ConnectionError, httpx.TransportError)):
+        return AiFailure.unavailable, None
+    return AiFailure.unknown, None
+
+
+def _provider_error(prefix: str, e: Exception) -> AiProviderError:
+    kind, status = _classify(e)
+    return AiProviderError(f"{prefix}: {e}", kind=kind, status_code=status)
 
 
 def _message_content_delta(part: object) -> str:

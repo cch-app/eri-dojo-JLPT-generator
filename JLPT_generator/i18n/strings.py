@@ -6,6 +6,12 @@ SUPPORTED_LOCALES = ("en", "ja", "zh_TW")
 
 _STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        "err_ai_quota": "The AI service is out of usage credits, so nothing can be generated until its account is topped up.",
+        "err_ai_auth": "The AI service rejected this app's API key.",
+        "err_ai_rate_limited": "The AI service is receiving too many requests. Wait a moment and try again.",
+        "err_ai_model_missing": "The AI model configured for this app was not found.",
+        "err_ai_unavailable": "The AI service can't be reached right now. Try again shortly.",
+        "err_ai_config": "The AI service is not configured on the server.",
         "app_title": "JLPT Mock Generator",
         "app_tagline": "Generate original JLPT-style questions (Reading/Listening) and get a strengths/weaknesses summary.",
         "language": "Language",
@@ -57,6 +63,12 @@ _STRINGS: dict[str, dict[str, str]] = {
         "max_num_questions": "Max 10",
     },
     "ja": {
+        "err_ai_quota": "AIサービスの利用クレジットが不足しています。アカウントにチャージされるまで生成できません。",
+        "err_ai_auth": "AIサービスがこのアプリのAPIキーを拒否しました。",
+        "err_ai_rate_limited": "AIサービスへのリクエストが多すぎます。少し待ってから再試行してください。",
+        "err_ai_model_missing": "設定されたAIモデルが見つかりません。",
+        "err_ai_unavailable": "現在AIサービスに接続できません。しばらくしてから再試行してください。",
+        "err_ai_config": "サーバーでAIサービスが設定されていません。",
         "app_title": "JLPT模擬問題ジェネレーター",
         "app_tagline": "オリジナルのJLPT形式問題（読解・聴解）を出題し、最後に強み・弱点のフィードバックを表示します。",
         "language": "言語",
@@ -108,6 +120,12 @@ _STRINGS: dict[str, dict[str, str]] = {
         "max_num_questions": "最大10問",
     },
     "zh_TW": {
+        "err_ai_quota": "AI 服務的使用額度已用完，帳戶儲值前無法產生內容。",
+        "err_ai_auth": "AI 服務拒絕了本應用程式的 API 金鑰。",
+        "err_ai_rate_limited": "AI 服務請求過多，請稍候再試。",
+        "err_ai_model_missing": "找不到本應用程式設定的 AI 模型。",
+        "err_ai_unavailable": "目前無法連線到 AI 服務，請稍後再試。",
+        "err_ai_config": "伺服器尚未設定 AI 服務。",
         "app_title": "JLPT 模擬試題產生器",
         "app_tagline": "產生原創 JLPT 風格題目（讀解／聽解），完成後提供強弱項回饋摘要。",
         "language": "介面語言",

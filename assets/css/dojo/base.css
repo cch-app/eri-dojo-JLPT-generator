@@ -1,0 +1,51 @@
+/* Erin Dojo design tokens and base elements.
+   A single dusk-lit theme by design. Japanese test content is always set in Japanese faces;
+   UI copy follows the chosen language (EN / 繁中). */
+:root{
+  --sumi:#1d1915;        /* ink / deep wood shadow */
+  --beam:#3b2a1d;        /* dark cedar beam */
+  --washi:#efe6d2;       /* paper */
+  --washi-line:#c9b993;  /* shoji lattice */
+  --muted:#a9977a;       /* labels on wood */
+  --soft:#cdbf9f;        /* secondary text on wood */
+  --shu:#b2452f;         /* seal vermilion, used sparingly */
+  --moss:#5d6b3f;        /* pass / correct */
+  --ai:#26324b;          /* indigo noren curtain */
+  --torii:#c4412a;       /* torii lacquer */
+  --ink-soft:#5a4d3e;
+  --display-ja:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body-ja:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --display:var(--display-ja);
+  --body:var(--body-ja);
+  color-scheme:dark;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root:lang(zh-Hant){
+  --display:"Noto Serif TC","PingFang TC","Microsoft JhengHei",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+[lang="ja"]{--display:var(--display-ja);--body:var(--body-ja);font-family:var(--body)}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--sumi);color:var(--washi);font-family:var(--body);font-size:15px;line-height:1.7;overflow-x:hidden}
+button{font:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--shu);outline-offset:3px}
+[hidden]{display:none!important}
+img{max-width:100%}
+
+/* buttons shared by sheets and dialogs */
+.btn{border:0;padding:10px 20px;font-weight:700;min-height:44px}
+.btn.primary{background:var(--sumi);color:var(--washi)}
+.btn.primary[disabled]{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--ink-soft);color:var(--sumi)}
+.btn.ghost-l{background:transparent;border:1px solid #57402c;color:var(--soft)}
+.btn.shu{background:var(--shu);color:var(--washi)}
+.linkish{background:none;border:1px solid #57402c;color:var(--soft);padding:6px 12px}
+.linkish:hover{border-color:var(--washi-line);color:var(--washi)}
+
+/* screen transitions */
+.enter{animation:rise .4s ease both}
+@keyframes rise{from{transform:translateY(8px)}to{transform:none}}
+@keyframes arrive{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

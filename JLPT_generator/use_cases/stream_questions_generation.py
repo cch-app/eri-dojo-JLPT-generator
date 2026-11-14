@@ -5,7 +5,7 @@ import time
 from collections.abc import Iterator
 from typing import Protocol
 
-from JLPT_generator.adapters.ai.base import AiProviderError
+from JLPT_generator.adapters.ai.base import AiFailure, AiProviderError
 from JLPT_generator.domain import JLPTLevel, QuestionSection
 from JLPT_generator.monitoring.generation_log import log_generation
 from JLPT_generator.parsers.delimited_questions import DelimitedQuestionStreamParser
@@ -51,8 +51,10 @@ def _stream_with_retries(
                 attempt=attempt + 1,
                 max_attempts=attempts,
                 detail=str(e),
+                kind=e.kind.value,
             )
-            if attempt + 1 >= attempts:
+            # Out of credits, bad key, missing model: asking again only burns calls.
+            if attempt + 1 >= attempts or not e.retryable:
                 raise
             time.sleep(min(2.0, 0.4 * (2**attempt)))
     if last_err:
@@ -98,6 +100,7 @@ def iter_question_stream_events(
     )
     questions: list[dict[str, Any]] = []
     stream_error: str | None = None
+    failure: AiProviderError | None = None
 
     yield {"type": "status", "status": "started", "requested": num_questions}
 
@@ -155,6 +158,7 @@ def iter_question_stream_events(
         raise
     except Exception as e:  # noqa: BLE001
         stream_error = str(e)
+        failure = e if isinstance(e, AiProviderError) else None
         log_generation(
             "generation_stream_exception",
             request_id=rid,
@@ -162,7 +166,7 @@ def iter_question_stream_events(
             received=len(questions),
         )
 
-    if len(questions) < num_questions:
+    if len(questions) < num_questions and not (failure and not failure.retryable):
         remaining = num_questions - len(questions)
         snippets = [str(q.get("prompt") or "") for q in questions]
         topoff = questions_stream_topoff_prompt(
@@ -212,6 +216,9 @@ def iter_question_stream_events(
                 if len(questions) >= num_questions:
                     break
         except Exception as e:  # noqa: BLE001
+            if failure is None and isinstance(e, AiProviderError):
+                failure = e
+                stream_error = stream_error or str(e)
             log_generation(
                 "topoff_failed",
                 request_id=rid,
@@ -234,6 +241,8 @@ def iter_question_stream_events(
         yield {
             "type": "error",
             "message": stream_error or "No questions were produced.",
+            "code": (failure.kind if failure else AiFailure.unknown).value,
+            "retryable": failure.retryable if failure else True,
             "partial_count": 0,
         }
         return

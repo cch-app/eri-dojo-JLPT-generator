@@ -1,10 +1,10 @@
 ## JLPT Flask Generator
 
-Generate **original JLPT-style** practice questions (Reading/Listening, N5–N1), answer them one-by-one, then get a strengths/weaknesses summary at the end. The app loads questions in a streaming flow, then steps through them. UI is available in **English, Japanese, or Traditional Chinese** (default follows the browser language until you pick a language on the setup page). You can download the session **feedback as a PDF** (uses the bundled Noto Sans TC font for CJK text). Maximum **10** questions per session.
+**Erin Dojo**: an RPG-style dojo for **original JLPT-style** practice. The gatekeeper at the crossroads leads you to the Reading Dojo, where you climb Mount Kotonoha from N5 (white belt) to N1. At each hut you can practice freely: AI-generated vocabulary, grammar and reading questions stream in while you answer, and the coach then writes strengths/weaknesses feedback that you can **download as a PDF** (uses the bundled Noto Sans TC font for CJK text). Between huts, three checkpoint keepers each test one section; every answer must be correct to earn their stamp. Progress is kept in the browser. The UI is available in **English or Traditional Chinese**, and Japanese test content is always set in Japanese faces. Maximum **10** questions per generation stream.
 
 ### Tech
 
-- **Framework**: Flask (server-rendered HTML)
+- **Framework**: Flask (one page + JSON/SSE API), front end as native ES modules in `assets/js/dojo` (no build step)
 - **Env/deps**: `uv` (local `.venv`)
 - **AI**: [Ollama](https://github.com/ollama/ollama-python) (local daemon or [Ollama Cloud](https://docs.ollama.com/cloud))
 - **Deploy**: Vercel (Python runtime) or Docker

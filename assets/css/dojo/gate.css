@@ -1,0 +1,129 @@
+/* Gate scenes (RPG entrance: crossroads → climb → dojo) and the NPC dialog box. */
+.gate{display:grid;container-type:inline-size}
+.gate-title{font-family:var(--display);font-size:14px;letter-spacing:.1em;color:var(--muted);margin-bottom:10px}
+.gate-title span{color:var(--washi);font-size:18px;font-weight:700}
+.scene{
+  /* --sh is the scene height: wide screens get a 62% aspect, phones at least 360px, and the scene + dialog always fit the screen height.
+     --dw is the dojo width; everything in the dojo scene scales from it. */
+  --sh:clamp(300px,min(max(62cqi,360px),100vh - 360px),620px);
+  --sh:clamp(300px,min(max(62cqi,360px),100svh - 360px),620px);
+  --dw:min(calc(var(--sh)*.27),32cqi);
+  position:relative;height:var(--sh);overflow:hidden;border:4px solid #0e0b09;border-bottom:0;
+  background:
+    radial-gradient(1.5px 1.5px at 8% 14%,#fff9 50%,transparent 52%),
+    radial-gradient(1px 1px at 22% 30%,#fff8 50%,transparent 52%),
+    radial-gradient(1.5px 1.5px at 33% 6%,#fffa 50%,transparent 52%),
+    radial-gradient(1px 1px at 63% 24%,#fff7 50%,transparent 52%),
+    radial-gradient(1px 1px at 77% 8%,#fff9 50%,transparent 52%),
+    radial-gradient(1px 1px at 92% 34%,#fff8 50%,transparent 52%),
+    linear-gradient(#0b0f1b 0%,#1d1b2c 45%,#2c2230 72%,#251c19 100%);
+}
+.scene>canvas,.scene>svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.scene>.willow{z-index:1}  /* behind the gate, in front of the ground */
+.scene>.bamboo{z-index:3}
+.scene>.mist{z-index:6}  /* low fog drifts in front of everything but the signpost; clicks pass through */
+.scene.arrive>*{animation:arrive .8s ease both}
+
+/* crossroads signpost (道標) */
+.signpost{--sp:min(calc(var(--sh)*.44),48cqi);position:absolute;left:50%;bottom:calc(var(--sh)*.05);width:calc(var(--sp)*1.2);height:calc(var(--sp)*1.28);transform:translateX(-50%);z-index:7}
+.sp-post{position:absolute;left:50%;top:5%;bottom:0;width:10%;transform:translateX(-50%);
+  background:repeating-linear-gradient(90deg,rgba(30,18,8,.25) 0 1px,transparent 1px 5px),linear-gradient(90deg,#3a2616,#86603a 38%,#5e4026 70%,#24170c);
+  box-shadow:0 0 0 1px #1a0f06}
+.sp-post::after{content:"";position:absolute;left:50%;bottom:-6%;width:420%;height:9%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);z-index:-1}
+.sp-rope{position:absolute;left:50%;top:76%;width:13%;height:5%;transform:translateX(-50%);background:repeating-linear-gradient(115deg,#d9cba6 0 3px,#a8966e 3px 6px);border-radius:2px;z-index:2}
+.sp-cap{position:absolute;left:50%;top:0;width:24%;height:8%;transform:translateX(-50%);background:linear-gradient(#45454c,#141417);clip-path:polygon(50% 0,100% 78%,100% 100%,0 100%,0 78%);z-index:3}
+.sp-board{position:absolute;width:90%;height:25%;padding:0;border:0;background:none;color:#1d140c;z-index:2;
+  filter:drop-shadow(0 5px 6px rgba(0,0,0,.65));transition:transform .3s ease,filter .3s ease}
+.sp-board.left{left:-6%;top:14%;transform:rotate(-4deg)}
+.sp-board.right{right:-6%;top:45%;transform:rotate(3deg)}
+.sp-board:hover,.sp-board:focus-visible{filter:drop-shadow(0 0 12px rgba(255,190,110,.75)) drop-shadow(0 5px 6px rgba(0,0,0,.6))}
+.sp-board.left:hover,.sp-board.left:focus-visible{transform:rotate(-4deg) translateX(-5px)}
+.sp-board.right:hover,.sp-board.right:focus-visible{transform:rotate(3deg) translateX(5px)}
+.sp-board:focus-visible{outline:none}
+.plank{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:.1em;line-height:1.15;
+  background:
+    radial-gradient(circle at 24% 50%,#2a1a0e 0 2.5px,transparent 3px),
+    radial-gradient(circle at 94% 50%,#2a1a0e 0 2.5px,transparent 3px),
+    repeating-linear-gradient(178deg,rgba(50,30,14,.22) 0 1px,transparent 1px 6px),
+    linear-gradient(#c09468,#946a42 55%,#6e4c2c)}
+.left .plank{clip-path:polygon(0 50%,14% 0,100% 0,100% 100%,14% 100%);padding-left:19%;align-items:flex-start}
+.right .plank{clip-path:polygon(0 0,86% 0,100% 50%,86% 100%,0 100%);padding-right:19%;padding-left:8%;align-items:flex-end;
+  background:
+    radial-gradient(circle at 6% 50%,#2a1a0e 0 2.5px,transparent 3px),
+    radial-gradient(circle at 76% 50%,#2a1a0e 0 2.5px,transparent 3px),
+    repeating-linear-gradient(182deg,rgba(50,30,14,.22) 0 1px,transparent 1px 6px),
+    linear-gradient(#bb8f62,#8e653e 55%,#6a482a)}
+.sp-ja{font-family:var(--display);font-weight:800;font-size:calc(var(--sp)*.118);letter-spacing:.08em;color:#1a1009;text-shadow:0 1px 0 rgba(255,230,190,.25)}
+.sp-gl{font-size:max(10px,calc(var(--sp)*.058));font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#3a2412}
+.sp-board.picked{animation:picked .9s ease}
+@keyframes picked{30%{filter:drop-shadow(0 0 18px rgba(255,200,120,.95))}}
+
+/* single dojo standing on the plateau at the top of the stairs (66% down the scene) */
+.stage{position:absolute;left:50%;bottom:34%;transform:translateX(-50%);z-index:2}
+.building{position:relative;width:100%;display:grid;justify-items:center}
+.torii{position:absolute;left:50%;bottom:0;width:140%;height:122%;transform:translateX(-50%);pointer-events:none;z-index:4}
+.torii>span{position:absolute;display:block}
+.torii .kasagi{top:0;left:0;right:0;height:11%;background:linear-gradient(#2a2622,#0e0b09);clip-path:polygon(0 0,18% 34%,50% 44%,82% 34%,100% 0,97% 100%,3% 100%)}
+.torii .shimaki{top:9.5%;left:4%;right:4%;height:5.5%;background:linear-gradient(#d65a3f,var(--torii) 60%,#8e2e1c)}
+.torii .nuki{top:27%;left:2%;right:2%;height:5%;background:linear-gradient(#d65a3f,var(--torii) 60%,#8e2e1c)}
+.torii .pillar{top:10%;bottom:0;width:7%;left:8%;background:linear-gradient(90deg,#7e2817,var(--torii) 40%,#9c3420);transform:rotate(1.2deg);transform-origin:bottom}
+.torii .pillar.r{left:auto;right:8%;transform:rotate(-1.2deg)}
+.torii .pillar::after{content:"";position:absolute;left:-12%;right:-12%;bottom:0;height:5%;background:#0e0b09}
+.torii .gaku{top:12%;left:50%;width:15%;height:17%;transform:translateX(-50%);background:var(--sumi);border:max(1px,calc(var(--dw)*.011)) solid #b8913f;display:grid;place-items:center;writing-mode:vertical-rl;font-family:var(--display);font-weight:800;font-size:calc(var(--dw)*.085);letter-spacing:.05em;color:var(--washi);line-height:1}
+.dojo-door{position:relative;width:var(--dw);background:none;border:0;padding:0;color:var(--washi);display:grid;justify-items:center;flex:none}
+.dojo-door .roof{width:128%;height:calc(var(--dw)*.3);background:linear-gradient(#34343b,#141417);clip-path:polygon(0 100%,8% 42%,28% 0,72% 0,92% 42%,100% 100%);margin-bottom:-2px}
+.dojo-door .frame{position:relative;width:100%;height:calc(var(--dw)*1.02);background:#4a3322;border:calc(var(--dw)*.034) solid #2a1d14;border-top-width:calc(var(--dw)*.05);padding:calc(var(--dw)*.034) calc(var(--dw)*.04) 0;display:grid;grid-template-rows:auto 1fr;gap:calc(var(--dw)*.034)}
+.dojo-door .sign{background:var(--washi);color:var(--sumi);font-family:var(--display);font-weight:800;text-align:center;font-size:max(9px,calc(var(--dw)*.09));letter-spacing:.1em;line-height:1.5;border:max(1px,calc(var(--dw)*.011)) solid #2a1d14;white-space:nowrap;overflow:hidden}
+.dojo-door .leaves{position:relative;display:flex;perspective:700px;background:radial-gradient(ellipse at 50% 75%,#ffd690,#d27a35 55%,#3a1e10 100%)}
+.dojo-door .leaf{flex:1;border:max(1px,calc(var(--dw)*.011)) solid #2a1d14;transform-origin:left center;transition:transform 1s cubic-bezier(.6,.05,.3,1);background:repeating-linear-gradient(90deg,#6d4a2c 0 calc(var(--dw)*.05),#5a3c23 calc(var(--dw)*.05) calc(var(--dw)*.062))}
+.dojo-door .leaf.r{transform-origin:right center}
+.dojo-door.open .leaf.l{transform:rotateY(-78deg)}
+.dojo-door.open .leaf.r{transform:rotateY(78deg)}
+.dojo-door .noren{position:absolute;left:6%;right:6%;top:0;height:36%;z-index:2;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:calc(var(--dw)*.17);color:var(--washi);
+  background:linear-gradient(90deg,transparent 32.5%,#0e0b09 32.5% 33.5%,transparent 33.5% 66%,#0e0b09 66% 67%,transparent 67%),var(--ai);transition:transform .6s ease}
+.dojo-door.open .noren{transform:translateY(-6px) scaleY(.85)}
+.dojo-door:hover .frame,.dojo-door:focus-visible .frame{box-shadow:0 0 28px 4px rgba(240,170,90,.35)}
+.dojo-door .tag{position:absolute;z-index:3;left:50%;top:58%;transform:translate(-50%,-50%) rotate(-8deg);background:var(--washi);color:var(--shu);border:max(1px,calc(var(--dw)*.011)) solid var(--shu);font-family:var(--display);font-weight:800;padding:0 calc(var(--dw)*.055);font-size:max(10px,calc(var(--dw)*.085));white-space:nowrap}
+.dojo-door.locked .leaves{background:#2b1c12}
+.dojo-door.shake{animation:shake .45s}
+@keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+
+/* dialog box with a talking portrait */
+.dialog{position:relative;background:#100d0b;border:3px solid var(--washi);box-shadow:0 0 0 4px #0e0b09,inset 0 0 0 3px #3d2e21;
+  padding:16px 18px 24px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;min-height:168px;cursor:pointer}
+.portrait{display:grid;gap:6px;justify-items:center;align-content:start}
+.face{width:116px;height:116px;border:2px solid var(--washi-line);background:#120c08;box-shadow:0 0 0 2px #0e0b09;overflow:hidden;flex:none}
+.face svg{display:block;width:100%;height:100%}
+.face.talking svg{animation:npcbob .5s ease-in-out infinite}
+@keyframes npcbob{50%{transform:translateY(-1.5px)}}
+.who{font-size:11px;letter-spacing:.08em;color:var(--washi-line);text-align:center;line-height:1.4}
+.say{min-width:0}
+.say .ja{font-family:var(--display);font-size:clamp(17px,2.4vw,21px);line-height:1.7;min-height:1.7em}
+.say .gloss{color:var(--muted);font-size:14px;margin-top:4px;min-height:1.4em}
+.more{position:absolute;right:16px;bottom:6px;color:var(--washi);font-size:13px;animation:bob 1s infinite}
+@keyframes bob{50%{transform:translateY(3px)}}
+.choices{display:grid;gap:2px;margin-top:10px}
+.choice{background:none;border:0;color:var(--washi);text-align:left;padding:7px 10px 7px 28px;position:relative;font-size:15px;min-height:40px}
+.choice::before{content:"▶";position:absolute;left:8px;top:8px;color:var(--shu);opacity:0}
+.choice.on{background:rgba(239,230,210,.08)}
+.choice.on::before{opacity:1}
+.choice .note{color:#8d7c63;font-size:12.5px;margin-left:8px}
+.backgate{margin-bottom:14px}
+
+@media (max-width:560px){
+  .dialog{grid-template-columns:1fr;gap:8px;padding:12px 14px 24px;min-height:150px}
+  .portrait{grid-auto-flow:column;justify-content:start;align-items:center;gap:10px}
+  .face{width:72px;height:72px}
+  .who br{display:none}
+  .choice .note{display:block;margin-left:0}
+}
+/* short landscape phones: keep the whole scene and the dialog on one screen */
+@media (orientation:landscape) and (max-height:520px){
+  .wrap{padding-block:6px 24px}
+  .topbar{margin-bottom:6px}
+  .gate-title{display:none}
+  .scene{--sh:clamp(170px,100vh - 205px,420px);--sh:clamp(170px,100svh - 205px,420px)}
+  .dialog{min-height:118px;padding:10px 16px 20px;gap:12px}
+  .face{width:64px;height:64px}
+  .say .ja{font-size:17px}
+}

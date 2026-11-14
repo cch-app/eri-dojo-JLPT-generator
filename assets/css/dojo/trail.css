@@ -1,0 +1,97 @@
+/* Trail map view (the hut you're at) and checkpoint encounters. */
+.trail{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
+.map-card{background:#c9b58e;padding:6px;box-shadow:0 18px 40px rgba(0,0,0,.55);border:1px solid #8a6a44;position:sticky;top:12px}
+.map-card.flash{animation:flash 1s ease}
+@keyframes flash{30%{box-shadow:0 0 0 4px var(--shu),0 18px 40px rgba(0,0,0,.55)}}
+.trailmap{display:block;width:100%;height:auto;max-height:calc(100vh - 110px);margin:0 auto}
+.trailmap text{font-family:var(--body);fill:#2a1d14}
+.trailmap .m-name{font-family:var(--display-ja);font-weight:700;font-size:11.5px}
+.trailmap .m-sub{font-size:8.5px;fill:#5a4630}
+.trailmap .m-title{font-family:var(--display-ja);font-weight:800;font-size:13px;letter-spacing:.06em}
+.trailmap .m-alt{font-size:7px;fill:#8a6a44}
+.trailmap .m-trail{font-family:var(--display-ja);font-size:9px;fill:#7a5a3a;font-style:italic}
+.trailmap .m-legend text{font-size:8px;fill:#3a2a1a}
+.trailmap .m-halo{paint-order:stroke;stroke:#efe4cc;stroke-width:3px;stroke-linejoin:round}
+.trailmap .m-cpk{font-family:var(--display-ja);font-weight:800;font-size:10px;text-anchor:middle;fill:#2a1d14}
+.trailmap .m-cpk.m-got{fill:#f6ecd8}
+.m-walked{fill:none;stroke:#b2452f;stroke-width:3.2;stroke-linecap:round}
+.m-ahead{fill:none;stroke:#b2452f;stroke-width:2;stroke-dasharray:4 5;opacity:.55;stroke-linecap:round}
+.m-tree{fill:#6e7a4a;opacity:.55}
+.m-stream{fill:none;stroke:#5a7aa0;stroke-width:1.6;opacity:.6}
+.m-dim{opacity:.55}
+.m-pulse{fill:none;stroke:#b2452f;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{from{transform:scale(.5);opacity:.9}to{transform:scale(1.5);opacity:0}}
+
+/* camp: location card, actions, stamp book */
+.camp{display:grid;gap:14px;min-width:0}
+.loc{background:linear-gradient(var(--beam),#2c1f15);border-top:2px solid #4c3726;border-bottom:5px solid #1a120c;padding:16px 18px;display:grid;gap:4px}
+.loc .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--shu);font-weight:700}
+.loc h1{margin:0;font-family:var(--display);font-size:clamp(24px,3.4vw,32px);line-height:1.2}
+.loc-sub{color:var(--soft);font-size:14px}
+.loc-row{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:6px}
+.meter{height:8px;background:rgba(0,0,0,.35);margin-top:8px;overflow:hidden}
+.meter span{display:block;height:100%;background:linear-gradient(90deg,#8a3a24,var(--shu))}
+.loc-prog{font-size:12.5px;color:var(--muted)}
+.actions{display:grid;gap:10px}
+.act{text-align:left;border:1px solid #57402c;background:rgba(0,0,0,.25);color:var(--washi);padding:12px 16px;font-weight:700;font-size:15px;display:grid;gap:3px}
+.act small{font-weight:400;font-size:12.5px;color:var(--soft);line-height:1.5}
+.act:hover{border-color:var(--washi-line)}
+.act.primary{background:var(--shu);border-color:var(--shu)}
+.act.primary small{color:#f3dcc8}
+.act.primary:hover{background:#c24e36}
+.summit-note{margin:0;color:var(--soft)}
+.talk{min-height:0}
+.camp .dialog{grid-template-columns:auto minmax(0,1fr)}
+.camp .face{width:96px;height:96px}
+
+.stampbook{border:1px solid #57402c;background:rgba(0,0,0,.2);padding:12px 14px}
+.sb-head{font-family:var(--display);font-size:15px;margin-bottom:10px;display:flex;gap:8px;align-items:baseline}
+.sb-head b{margin-left:auto;font-family:var(--body);font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
+.sb-grid{display:grid;gap:6px}
+.sb-row{display:grid;grid-template-columns:4.5em repeat(3,1fr);gap:6px;align-items:center}
+.sb-trail{font-size:12px;color:var(--muted)}
+.sb-cell{height:46px;border:1px dashed #57402c;display:grid;place-items:center;align-content:center;position:relative}
+.sb-cell.got{border:1px solid #6e3020;background:rgba(178,69,47,.12)}
+.seal-k{display:grid;place-items:center;width:28px;height:28px;background:var(--shu);color:#f6ecd8;font-family:var(--display-ja);font-weight:800;font-size:16px;border-radius:3px;transform:rotate(-6deg)}
+.sb-name{font-size:10px;color:var(--soft);margin-top:2px}
+.sb-q{color:#57402c;font-family:var(--display);font-size:18px}
+
+/* checkpoint encounter */
+.cp{display:grid;gap:12px}
+.cp-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 12px;flex-wrap:wrap}
+.cp-head .eyebrow{font-size:12px;letter-spacing:.1em;color:var(--muted)}
+.cp-alt{font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
+.cp-body{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:18px;align-items:start}
+.cp-portrait{position:relative;border:3px solid var(--washi);box-shadow:0 0 0 4px #0e0b09,0 18px 40px rgba(0,0,0,.5)}
+.cp-portrait svg{display:block;width:100%;height:auto}
+.cp-name{position:absolute;left:0;right:0;bottom:0;padding:24px 14px 10px;background:linear-gradient(transparent,rgba(10,7,5,.92));display:grid}
+.cp-name b{font-family:var(--display-ja);font-size:clamp(22px,3vw,28px)}
+.cp-name span{font-size:13px;color:var(--soft)}
+.cp-side{display:grid;gap:12px;min-width:0}
+.cp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cp-steps span{border:1px solid #57402c;padding:8px;font-size:12px;color:var(--muted);display:grid;gap:2px;text-align:center}
+.cp-steps b{font-family:var(--display-ja);font-size:20px;color:var(--soft)}
+.cp-steps .done{border-color:#6e3020;background:rgba(178,69,47,.15)}
+.cp-steps .done b{color:var(--shu)}
+.cp-steps .now{border-color:var(--washi-line);color:var(--washi);background:rgba(239,230,210,.06)}
+.cp-steps .now b{color:var(--washi)}
+.cp .face{width:72px;height:72px}
+.cp-verdict{display:flex;gap:18px;align-items:center}
+.cp-verdict .big-seal{width:84px;height:84px;font-size:38px;flex:none}
+.cp-verdict.fail .big-seal{color:var(--shu)}
+.cp-verdict h2{margin:0;font-family:var(--display);font-size:clamp(20px,2.6vw,26px)}
+.promo-line{margin:4px 0 0;color:var(--washi-line);font-weight:700}
+.cp details{color:var(--washi)}
+.cp .rv{color:var(--sumi)}
+
+@media (max-width:820px){
+  .trail{grid-template-columns:1fr}
+  .map-card{position:static}
+  .trailmap{max-height:none}
+  .cp-body{grid-template-columns:1fr}
+  .cp-portrait{max-width:300px;width:100%;justify-self:center}
+}
+@media (max-width:560px){
+  .camp .face,.cp .face{width:64px;height:64px}
+  .sb-row{grid-template-columns:3.6em repeat(3,1fr)}
+}
